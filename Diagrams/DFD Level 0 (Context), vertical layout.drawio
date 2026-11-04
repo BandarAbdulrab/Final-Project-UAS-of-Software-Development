@@ -1,0 +1,103 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="‫الصفحة-1‬" id="4-AKO1AtDBZaHEveTn8E">
+    <mxGraphModel dx="5497" dy="3220" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <UserObject label="" mermaidData="{&#xa;  &quot;data&quot;: &quot;flowchart TB\n    CUS[Customer]\n    CAS[Cashier]\n    SYS((\&quot;0&lt;br/&gt;Kedai Paradise&lt;br/&gt;POS and Finance&lt;br/&gt;System\&quot;))\n    ADM[Admin / Owner]\n\n    CUS --&gt;|\&quot;order + payment&lt;br/&gt;(cash / QRIS scan)\&quot;| CAS\n    CAS --&gt;|\&quot;receipt&lt;br/&gt;(order no., table/TA)\&quot;| CUS\n\n    CAS --&gt;|\&quot;login credentials&lt;br/&gt;menu + quantity + modifier selection&lt;br/&gt;table/TA, payment method + amount&lt;br/&gt;QRIS + transaction confirmation (checkout token)&lt;br/&gt;order-completed marking&lt;br/&gt;history filter + sort, export request&lt;br/&gt;change own password\&quot;| SYS\n    SYS --&gt;|\&quot;menu list with options + categories&lt;br/&gt;option modal data, total + change&lt;br/&gt;QRIS image, order number&lt;br/&gt;receipt + queue (with modifiers)&lt;br/&gt;today&#39;s history, cashier dashboard&lt;br/&gt;cash closing history (read-only)&lt;br/&gt;CSV file / print view&lt;br/&gt;login lock + validation messages\&quot;| CAS\n\n    ADM --&gt;|\&quot;login credentials&lt;br/&gt;menu + category + price + cost&lt;br/&gt;modifier groups + items, user data&lt;br/&gt;business / QRIS / allocation settings&lt;br/&gt;manual income + expenses&lt;br/&gt;report parameters, filters, sort, export request&lt;br/&gt;void request (order + reason)&lt;br/&gt;cash closing data, change own password\&quot;| SYS\n    SYS --&gt;|\&quot;sales + financial reports&lt;br/&gt;menu item sales performance&lt;br/&gt;profit, balances + pool balances&lt;br/&gt;history (with voided orders), ledger, dashboard&lt;br/&gt;void confirmation&lt;br/&gt;expected cash + variance, closing history&lt;br/&gt;CSV files, print views\&quot;| ADM&quot;,&#xa;  &quot;config&quot;: null,&#xa;  &quot;version&quot;: &quot;12&quot;&#xa;}" id="3PihUM2xDh2qWYM-7mxN-1020">
+          <mxCell connectable="0" parent="1" style="group;transparentBounds=1;editIcon=1;lockedGroup=0;groupPadding=10;" vertex="1">
+            <mxGeometry as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Customer" mermaidId="n:CUS" mermaidBaseStyle="html=1;whiteSpace=wrap;strokeWidth=2;fillColor=#ffffff;strokeColor=#28253D;fontColor=#28253D;fontFamily=Recursive;fontSize=14;shadow=1;shadowColor=#000000;shadowOffsetX=4;shadowOffsetY=4;shadowBlur=0;shadowOpacity=6;" mermaidBaseValue="Customer" id="3PihUM2xDh2qWYM-7mxN-1021">
+          <mxCell parent="3PihUM2xDh2qWYM-7mxN-1020" style="html=1;whiteSpace=wrap;strokeWidth=2;fillColor=#ffffff;strokeColor=#28253D;fontColor=#28253D;fontFamily=Recursive;fontSize=14;shadow=1;shadowColor=#000000;shadowOffsetX=4;shadowOffsetY=4;shadowBlur=0;shadowOpacity=6;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" vertex="1">
+            <mxGeometry height="45" width="152" x="130" y="900" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Cashier" mermaidId="n:CAS" mermaidBaseStyle="html=1;whiteSpace=wrap;strokeWidth=2;fillColor=#ffffff;strokeColor=#28253D;fontColor=#28253D;fontFamily=Recursive;fontSize=14;shadow=1;shadowColor=#000000;shadowOffsetX=4;shadowOffsetY=4;shadowBlur=0;shadowOpacity=6;" mermaidBaseValue="Cashier" id="3PihUM2xDh2qWYM-7mxN-1022">
+          <mxCell parent="3PihUM2xDh2qWYM-7mxN-1020" style="html=1;whiteSpace=wrap;strokeWidth=2;fillColor=#ffffff;strokeColor=#28253D;fontColor=#28253D;fontFamily=Recursive;fontSize=14;shadow=1;shadowColor=#000000;shadowOffsetX=4;shadowOffsetY=4;shadowBlur=0;shadowOpacity=6;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" vertex="1">
+            <mxGeometry height="45" width="152" x="130" y="1067" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="0&#xa;Kedai Paradise&#xa;POS and Finance&#xa;System" mermaidId="n:SYS" mermaidBaseStyle="ellipse;html=1;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#ffffff;strokeColor=#28253D;fontColor=#28253D;fontFamily=Recursive;fontSize=14;shadow=1;shadowColor=#000000;shadowOffsetX=4;shadowOffsetY=4;shadowBlur=0;shadowOpacity=6;" mermaidBaseValue="0&#xa;Kedai Paradise&#xa;POS and Finance&#xa;System" id="3PihUM2xDh2qWYM-7mxN-1023">
+          <mxCell parent="3PihUM2xDh2qWYM-7mxN-1020" style="ellipse;html=1;aspect=fixed;strokeWidth=2;whiteSpace=wrap;fillColor=#ffffff;strokeColor=#28253D;fontColor=#28253D;fontFamily=Recursive;fontSize=14;shadow=1;shadowColor=#000000;shadowOffsetX=4;shadowOffsetY=4;shadowBlur=0;shadowOpacity=6;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" vertex="1">
+            <mxGeometry height="184" width="184" x="114" y="1361" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Admin / Owner" mermaidId="n:ADM" mermaidBaseStyle="html=1;whiteSpace=wrap;strokeWidth=2;fillColor=#ffffff;strokeColor=#28253D;fontColor=#28253D;fontFamily=Recursive;fontSize=14;shadow=1;shadowColor=#000000;shadowOffsetX=4;shadowOffsetY=4;shadowBlur=0;shadowOpacity=6;" mermaidBaseValue="Admin / Owner" id="3PihUM2xDh2qWYM-7mxN-1024">
+          <mxCell parent="3PihUM2xDh2qWYM-7mxN-1020" style="html=1;whiteSpace=wrap;strokeWidth=2;fillColor=#ffffff;strokeColor=#28253D;fontColor=#28253D;fontFamily=Recursive;fontSize=14;shadow=1;shadowColor=#000000;shadowOffsetX=4;shadowOffsetY=4;shadowBlur=0;shadowOpacity=6;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" vertex="1">
+            <mxGeometry height="45" width="152" x="130" y="1793" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="order + payment&#xa;(cash / QRIS scan)" mermaidId="e:CUS-&gt;CAS#0" mermaidBaseStyle="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=16;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.36;exitY=1;entryX=0.36;entryY=0.01;strokeWidth=2;targetPerimeterSpacing=4;" mermaidBaseValue="order + payment&#xa;(cash / QRIS scan)" id="3PihUM2xDh2qWYM-7mxN-1025">
+          <mxCell edge="1" parent="3PihUM2xDh2qWYM-7mxN-1020" source="3PihUM2xDh2qWYM-7mxN-1021" style="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=14;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.36;exitY=1;entryX=0.36;entryY=0.01;strokeWidth=2;targetPerimeterSpacing=4;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" target="3PihUM2xDh2qWYM-7mxN-1022">
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="129" y="965" />
+                <mxPoint x="129" y="1047" />
+              </Array>
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="receipt&#xa;(order no., table/TA)" mermaidId="e:CAS-&gt;CUS#0" mermaidBaseStyle="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=16;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.64;exitY=0.01;entryX=0.64;entryY=1;strokeWidth=2;targetPerimeterSpacing=4;" mermaidBaseValue="receipt&#xa;(order no., table/TA)" id="3PihUM2xDh2qWYM-7mxN-1026">
+          <mxCell edge="1" parent="3PihUM2xDh2qWYM-7mxN-1020" source="3PihUM2xDh2qWYM-7mxN-1022" style="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=14;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.64;exitY=0.01;entryX=0.64;entryY=1;strokeWidth=2;targetPerimeterSpacing=4;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" target="3PihUM2xDh2qWYM-7mxN-1021">
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="283" y="1047" />
+                <mxPoint x="283" y="965" />
+              </Array>
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="login credentials&#xa;menu + quantity + modifier selection&#xa;table/TA, payment method + amount&#xa;QRIS + transaction confirmation (checkout token)&#xa;order-completed marking&#xa;history filter + sort, export request&#xa;change own password" mermaidId="e:CAS-&gt;SYS#0" mermaidBaseStyle="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=16;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.36;exitY=1;entryX=0.35;entryY=0;strokeWidth=2;targetPerimeterSpacing=4;" mermaidBaseValue="login credentials&#xa;menu + quantity + modifier selection&#xa;table/TA, payment method + amount&#xa;QRIS + transaction confirmation (checkout token)&#xa;order-completed marking&#xa;history filter + sort, export request&#xa;change own password" id="3PihUM2xDh2qWYM-7mxN-1027">
+          <mxCell edge="1" parent="3PihUM2xDh2qWYM-7mxN-1020" source="3PihUM2xDh2qWYM-7mxN-1022" style="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=14;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.36;exitY=1;entryX=0.35;entryY=0;strokeWidth=2;targetPerimeterSpacing=4;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" target="3PihUM2xDh2qWYM-7mxN-1023">
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="184" y="1133" />
+                <mxPoint x="48" y="1133" />
+                <mxPoint x="48" y="1341" />
+                <mxPoint x="179" y="1341" />
+              </Array>
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="menu list with options + categories&#xa;option modal data, total + change&#xa;QRIS image, order number&#xa;receipt + queue (with modifiers)&#xa;today&#39;s history, cashier dashboard&#xa;cash closing history (read-only)&#xa;CSV file / print view&#xa;login lock + validation messages" mermaidId="e:SYS-&gt;CAS#0" mermaidBaseStyle="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=16;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.65;exitY=0;entryX=0.64;entryY=1;strokeWidth=2;targetPerimeterSpacing=4;" mermaidBaseValue="menu list with options + categories&#xa;option modal data, total + change&#xa;QRIS image, order number&#xa;receipt + queue (with modifiers)&#xa;today&#39;s history, cashier dashboard&#xa;cash closing history (read-only)&#xa;CSV file / print view&#xa;login lock + validation messages" id="3PihUM2xDh2qWYM-7mxN-1028">
+          <mxCell edge="1" parent="3PihUM2xDh2qWYM-7mxN-1020" source="3PihUM2xDh2qWYM-7mxN-1023" style="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=14;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.65;exitY=0;entryX=0.64;entryY=1;strokeWidth=2;targetPerimeterSpacing=4;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" target="3PihUM2xDh2qWYM-7mxN-1022">
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="233" y="1341" />
+                <mxPoint x="365" y="1341" />
+                <mxPoint x="365" y="1133" />
+                <mxPoint x="228" y="1133" />
+              </Array>
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="login credentials&#xa;menu + category + price + cost&#xa;modifier groups + items, user data&#xa;business / QRIS / allocation settings&#xa;manual income + expenses&#xa;report parameters, filters, sort, export request&#xa;void request (order + reason)&#xa;cash closing data, change own password" mermaidId="e:ADM-&gt;SYS#0" mermaidBaseStyle="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=16;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.36;exitY=0;entryX=0.35;entryY=1;strokeWidth=2;targetPerimeterSpacing=4;" mermaidBaseValue="login credentials&#xa;menu + category + price + cost&#xa;modifier groups + items, user data&#xa;business / QRIS / allocation settings&#xa;manual income + expenses&#xa;report parameters, filters, sort, export request&#xa;void request (order + reason)&#xa;cash closing data, change own password" id="3PihUM2xDh2qWYM-7mxN-1029">
+          <mxCell edge="1" parent="3PihUM2xDh2qWYM-7mxN-1020" source="3PihUM2xDh2qWYM-7mxN-1024" style="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=14;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.36;exitY=0;entryX=0.35;entryY=1;strokeWidth=2;targetPerimeterSpacing=4;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" target="3PihUM2xDh2qWYM-7mxN-1023">
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="184" y="1773" />
+                <mxPoint x="30" y="1773" />
+                <mxPoint x="30" y="1565" />
+                <mxPoint x="179" y="1565" />
+              </Array>
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="sales + financial reports&#xa;menu item sales performance&#xa;profit, balances + pool balances&#xa;history (with voided orders), ledger, dashboard&#xa;void confirmation&#xa;expected cash + variance, closing history&#xa;CSV files, print views" mermaidId="e:SYS-&gt;ADM#0" mermaidBaseStyle="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=16;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.65;exitY=1;entryX=0.64;entryY=0;strokeWidth=2;targetPerimeterSpacing=4;" mermaidBaseValue="sales + financial reports&#xa;menu item sales performance&#xa;profit, balances + pool balances&#xa;history (with voided orders), ledger, dashboard&#xa;void confirmation&#xa;expected cash + variance, closing history&#xa;CSV files, print views" id="3PihUM2xDh2qWYM-7mxN-1030">
+          <mxCell edge="1" parent="3PihUM2xDh2qWYM-7mxN-1020" source="3PihUM2xDh2qWYM-7mxN-1023" style="edgeStyle=orthogonalEdgeStyle;rounded=1;curved=0;startArrow=none;endArrow=block;endSize=8;jumpStyle=arc;jumpSize=12;strokeColor=#000000;html=1;fontSize=14;labelBackgroundColor=#cccccc;fontFamily=Recursive;fontColor=#28253D;exitX=0.65;exitY=1;entryX=0.64;entryY=0;strokeWidth=2;targetPerimeterSpacing=4;fontSource=https%3A%2F%2Ffonts.googleapis.com%2Fcss%3Ffamily%3DRecursive;" target="3PihUM2xDh2qWYM-7mxN-1024">
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="233" y="1565" />
+                <mxPoint x="382" y="1565" />
+                <mxPoint x="382" y="1773" />
+                <mxPoint x="228" y="1773" />
+              </Array>
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
