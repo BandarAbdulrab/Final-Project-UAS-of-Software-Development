@@ -3,6 +3,8 @@
  * System Bootstrap & Error Reporting Handler
  */
 
+date_default_timezone_set('Asia/Jakarta');
+
 $privateConfig = dirname(__DIR__, 2) . '/private/config.local.php';
 if (!file_exists($privateConfig)) {
     $privateConfig = __DIR__ . '/../private/config.local.php';

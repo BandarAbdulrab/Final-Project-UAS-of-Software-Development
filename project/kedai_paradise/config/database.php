@@ -21,7 +21,8 @@ function db(): PDO {
         $config = require $configFile;
 
         try {
-            $dsn = "mysql:host={$config['db_host']};dbname={$config['db_name']};charset=utf8mb4";
+            $port = $config['db_port'] ?? 3306;
+            $dsn = "mysql:host={$config['db_host']};port={$port};dbname={$config['db_name']};charset=utf8mb4";            
             $options = [
                 PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,

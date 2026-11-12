@@ -4,7 +4,7 @@ $role = $_SESSION['role'] ?? '';
 $name = $_SESSION['name'] ?? 'Staff';
 $currentFile = basename($_SERVER['PHP_SELF']);
 
-// Injeksi string terjemahan JS (hanya key berawalan js_)
+// Inject JS translation strings (only keys starting with js_)
 $jsLangs = [];
 $allLangs = require __DIR__ . '/../lang/id.php';
 foreach ($allLangs as $k => $v) {
@@ -12,6 +12,18 @@ foreach ($allLangs as $k => $v) {
         $jsLangs[$k] = $v;
     }
 }
+
+$navAdmin = [
+    ['dashboard.php', 'js_dashboard'], ['pos.php', 'js_pos'], ['queue.php', 'js_queue'],
+    ['history.php', 'js_history'], ['cash_close.php', 'js_cash_close'], ['menu_manage.php', 'js_menu'],
+    ['finance.php', 'js_finance'], ['reports.php', 'js_reports'], ['menu_performance.php', 'js_menu_performance'],
+    ['users.php', 'js_users'], ['settings.php', 'js_settings'],
+];
+$navCashier = [
+    ['dashboard.php', 'js_dashboard'], ['pos.php', 'js_pos'], ['queue.php', 'js_queue'],
+    ['history.php', 'js_history'], ['cash_close.php', 'js_cash_close'],
+];
+$navItems = $role === 'admin' ? $navAdmin : ($role === 'cashier' ? $navCashier : []);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -32,31 +44,32 @@ foreach ($allLangs as $k => $v) {
             <div class="flex justify-between h-16">
                 <div class="flex items-center space-x-6">
                     <span class="font-bold text-lg tracking-wider">KEDAI PARADISE</span>
-                    <div class="hidden md:flex space-x-2 text-sm">
-                        <?php if ($role === 'admin'): ?>
-                            <a href="dashboard.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='dashboard.php'?'bg-[#153d31]':'' ?>">Dasbor</a>
-                            <a href="pos.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='pos.php'?'bg-[#153d31]':'' ?>">Kasir</a>
-                            <a href="queue.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='queue.php'?'bg-[#153d31]':'' ?>">Antrian</a>
-                            <a href="history.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='history.php'?'bg-[#153d31]':'' ?>">Riwayat</a>
-                            <a href="cash_close.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='cash_close.php'?'bg-[#153d31]':'' ?>">Tutup Kasir</a>
-                            <a href="menu_manage.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='menu_manage.php'?'bg-[#153d31]':'' ?>">Menu</a>
-                            <a href="finance.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='finance.php'?'bg-[#153d31]':'' ?>">Keuangan</a>
-                            <a href="reports.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='reports.php'?'bg-[#153d31]':'' ?>">Laporan</a>
-                        <?php elseif ($role === 'cashier'): ?>
-                            <a href="pos.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='pos.php'?'bg-[#153d31]':'' ?>">Kasir</a>
-                            <a href="queue.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='queue.php'?'bg-[#153d31]':'' ?>">Antrian</a>
-                            <a href="history.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='history.php'?'bg-[#153d31]':'' ?>">Riwayat</a>
-                            <a href="cash_close.php" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile==='cash_close.php'?'bg-[#153d31]':'' ?>">Tutup Kasir</a>
-                        <?php endif; ?>
+                    <div class="hidden xl:flex space-x-1 text-sm">
+                        <?php foreach ($navItems as [$file, $key]): ?>
+                            <a href="<?= e($file) ?>" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile === $file ? 'bg-[#153d31]' : '' ?>"><?= e(t($key)) ?></a>
+                        <?php endforeach; ?>
                     </div>
                 </div>
-                <div class="flex items-center space-x-4">
-                    <a href="account.php" class="text-sm font-medium hover:underline"><?= e($name) ?> (<?= e($role) ?>)</a>
-                    <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded transition">Keluar</a>
+                <div class="flex items-center space-x-3">
+                    <a href="account.php" class="text-sm font-medium hover:underline"><?= e($name) ?> (<?= e(t('role_' . $role)) ?>)</a>
+                    <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded transition"><?= e(t('js_logout')) ?></a>
+                    <button type="button" id="navToggle" class="xl:hidden p-2 rounded hover:bg-[#153d31]" aria-label="Menu" aria-expanded="false">&#9776;</button>
                 </div>
+            </div>
+            <div id="mobileNav" class="hidden pb-3 grid gap-1 text-sm">
+                <?php foreach ($navItems as [$file, $key]): ?>
+                    <a href="<?= e($file) ?>" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile === $file ? 'bg-[#153d31]' : '' ?>"><?= e(t($key)) ?></a>
+                <?php endforeach; ?>
             </div>
         </div>
     </nav>
-    
+    <script>
+        document.getElementById('navToggle').addEventListener('click', function () {
+            var m = document.getElementById('mobileNav');
+            m.classList.toggle('hidden');
+            this.setAttribute('aria-expanded', m.classList.contains('hidden') ? 'false' : 'true');
+        });
+    </script>
+
     <!-- Main Content Container -->
     <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
