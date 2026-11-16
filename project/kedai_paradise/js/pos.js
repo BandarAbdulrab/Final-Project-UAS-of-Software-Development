@@ -419,3 +419,284 @@
     renderCart();
   };
 })();
+
+// --- Day 5: Checkout & Payment Modal Controller ---
+(function () {
+  "use strict";
+
+  let selectedPaymentMethod = null;
+  let isSubmitting = false;
+
+  function ensurePaymentModalExists() {
+    if (document.getElementById("payment-modal")) return;
+
+    const modalHtml = `
+            <div id="payment-modal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+                <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+                    <div class="bg-[#1B4D3E] text-white px-5 py-3.5 flex justify-between items-center">
+                        <h3 id="pay-modal-title" class="font-bold text-base">Konfirmasi Pembayaran</h3>
+                        <button type="button" id="pay-modal-close" class="text-white/80 hover:text-white text-2xl leading-none font-bold">&times;</button>
+                    </div>
+                    <div id="pay-modal-body" class="p-5 space-y-4"></div>
+                    <div class="bg-gray-50 border-t px-5 py-3.5 flex items-center justify-end gap-3">
+                        <button type="button" id="pay-modal-cancel" class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium hover:bg-gray-50">Batal</button>
+                        <button type="button" id="pay-modal-confirm" disabled class="bg-[#1B4D3E] hover:bg-[#153d31] disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold text-sm px-5 py-2.5 rounded-lg transition">
+                            Ya, Selesaikan
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    document.body.insertAdjacentHTML("beforeend", modalHtml);
+
+    document.getElementById("pay-modal-close").addEventListener("click", closePaymentModal);
+    document.getElementById("pay-modal-cancel").addEventListener("click", closePaymentModal);
+    document.getElementById("pay-modal-confirm").addEventListener("click", executeCheckout);
+    document.getElementById("payment-modal").addEventListener("click", function (e) {
+      if (e.target === this && !isSubmitting) closePaymentModal();
+    });
+  }
+
+  function closePaymentModal() {
+    const modal = document.getElementById("payment-modal");
+    if (modal) modal.classList.add("hidden");
+  }
+
+  function initPaymentUI() {
+    ensurePaymentModalExists();
+
+    const methodBtns = document.querySelectorAll(".pay-method-btn");
+    const checkoutBtn = document.getElementById("pos-checkout-btn");
+    const tableSelect = document.getElementById("pos-table");
+
+    methodBtns.forEach((btn) => {
+      btn.addEventListener("click", () => {
+        methodBtns.forEach((b) =>
+          b.classList.remove("border-[#1B4D3E]", "bg-emerald-50", "text-[#1B4D3E]"),
+        );
+        btn.classList.add("border-[#1B4D3E]", "bg-emerald-50", "text-[#1B4D3E]");
+        selectedPaymentMethod = btn.dataset.method;
+        validateCheckoutReady();
+      });
+    });
+
+    if (tableSelect) {
+      tableSelect.addEventListener("change", validateCheckoutReady);
+    }
+
+    document.addEventListener("pos:cartUpdated", validateCheckoutReady);
+
+    if (checkoutBtn) {
+      checkoutBtn.addEventListener("click", openPaymentModal);
+    }
+
+    validateCheckoutReady();
+  }
+
+  function validateCheckoutReady() {
+    const checkoutBtn = document.getElementById("pos-checkout-btn");
+    const tableSelect = document.getElementById("pos-table");
+    const cart = window.getCart ? window.getCart() : [];
+    const hasTable = tableSelect && tableSelect.value !== "";
+    const hasItems = cart.length > 0;
+    const hasMethod = selectedPaymentMethod !== null;
+
+    if (checkoutBtn) {
+      checkoutBtn.disabled = !(hasTable && hasItems && hasMethod);
+    }
+  }
+
+  function openPaymentModal() {
+    const cart = window.getCart ? window.getCart() : [];
+    const total = window.getTotal ? window.getTotal() : 0;
+    const tableNo = document.getElementById("pos-table").value;
+
+    if (cart.length === 0 || !selectedPaymentMethod || !tableNo) return;
+
+    const body = document.getElementById("pay-modal-body");
+    const confirmBtn = document.getElementById("pay-modal-confirm");
+    confirmBtn.textContent = "Ya, Selesaikan";
+
+    if (selectedPaymentMethod === "cash") {
+      // formatRupiah() already includes the "Rp" prefix
+      body.innerHTML = `
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center text-sm bg-gray-50 p-3 rounded-lg">
+                        <span class="text-gray-600">Total Tagihan:</span>
+                        <span class="font-bold text-lg text-[#1B4D3E]">${formatRupiah(total)}</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-gray-700 mb-1">Uang Diterima (Tunai)</label>
+                        <input type="number" id="cash-paid-input" min="${total}" step="1" placeholder="Masukkan nominal"
+                            class="w-full border border-gray-300 rounded-lg px-3.5 py-2.5 text-base font-bold focus:ring-2 focus:ring-[#1B4D3E] focus:outline-none">
+                    </div>
+                    <div class="grid grid-cols-4 gap-1.5 pt-1">
+                        <button type="button" class="cash-quick-btn border rounded py-1.5 text-xs font-semibold hover:bg-gray-50" data-val="${total}">Uang Pas</button>
+                        <button type="button" class="cash-quick-btn border rounded py-1.5 text-xs font-semibold hover:bg-gray-50" data-val="20000">Rp20rb</button>
+                        <button type="button" class="cash-quick-btn border rounded py-1.5 text-xs font-semibold hover:bg-gray-50" data-val="50000">Rp50rb</button>
+                        <button type="button" class="cash-quick-btn border rounded py-1.5 text-xs font-semibold hover:bg-gray-50" data-val="100000">Rp100rb</button>
+                    </div>
+                    <div id="cash-change-display" class="flex justify-between items-center text-sm p-3 rounded-lg bg-emerald-50 text-emerald-800 font-semibold">
+                        <span>Kembalian:</span>
+                        <span id="change-amount-text">Rp0</span>
+                    </div>
+                </div>
+            `;
+
+      const cashInput = document.getElementById("cash-paid-input");
+      const changeText = document.getElementById("change-amount-text");
+      const changeBox = document.getElementById("cash-change-display");
+
+      cashInput.addEventListener("input", () => {
+        const paid = Number(cashInput.value || 0);
+        const change = paid - total;
+        if (change >= 0) {
+          changeText.textContent = formatRupiah(change);
+          changeBox.className =
+            "flex justify-between items-center text-sm p-3 rounded-lg bg-emerald-50 text-emerald-800 font-semibold";
+          confirmBtn.disabled = false;
+        } else {
+          changeText.textContent = "Kurang " + formatRupiah(Math.abs(change));
+          changeBox.className =
+            "flex justify-between items-center text-sm p-3 rounded-lg bg-red-50 text-red-700 font-semibold";
+          confirmBtn.disabled = true;
+        }
+      });
+
+      document.querySelectorAll(".cash-quick-btn").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          let val = Number(btn.dataset.val);
+          if (val < total) val = total;
+          cashInput.value = val;
+          cashInput.dispatchEvent(new Event("input"));
+        });
+      });
+
+      cashInput.value = total;
+      cashInput.dispatchEvent(new Event("input"));
+      setTimeout(() => cashInput.focus(), 100);
+    } else {
+      // QRIS Payment Mode
+      body.innerHTML = `
+                <div class="space-y-4 text-center">
+                    <div class="bg-gray-50 p-3 rounded-lg flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Total Tagihan:</span>
+                        <span class="font-bold text-lg text-[#1B4D3E]">${formatRupiah(total)}</span>
+                    </div>
+                    <div class="border rounded-xl p-3 bg-white inline-block shadow-sm">
+                        <div id="qris-img-container" class="w-48 h-48 bg-gray-100 flex items-center justify-center mx-auto rounded overflow-hidden"></div>
+                    </div>
+                    <p class="text-xs text-gray-600">Scan QRIS di atas menggunakan m-banking atau e-wallet.</p>
+                    <label class="flex items-center gap-2.5 text-xs text-gray-800 text-left bg-emerald-50/60 p-3 rounded-lg border border-emerald-100 cursor-pointer">
+                        <input type="checkbox" id="qris-confirm-check" class="rounded text-[#1B4D3E] w-4 h-4">
+                        <span class="font-medium">Saya mengonfirmasi dana ${formatRupiah(total)} telah masuk di mutasi m-banking.</span>
+                    </label>
+                </div>
+            `;
+
+      // QRIS image comes from settings, injected by pos.php as window.QRIS_IMAGE
+      const qrisContainer = document.getElementById("qris-img-container");
+      if (window.QRIS_IMAGE) {
+        const img = document.createElement("img");
+        img.src = window.QRIS_IMAGE;
+        img.alt = "QRIS Kedai Paradise";
+        img.className = "w-full h-full object-contain";
+        img.onerror = function () {
+          qrisContainer.innerHTML =
+            '<span class="text-xs text-red-600 p-2">Gambar QRIS gagal dimuat.</span>';
+        };
+        qrisContainer.appendChild(img);
+      } else {
+        qrisContainer.innerHTML =
+          '<span class="text-xs text-gray-500 p-2">QRIS belum diunggah di Pengaturan.</span>';
+      }
+
+      const qrisCheck = document.getElementById("qris-confirm-check");
+      qrisCheck.addEventListener("change", () => {
+        confirmBtn.disabled = !qrisCheck.checked;
+      });
+      confirmBtn.disabled = true;
+    }
+
+    document.getElementById("payment-modal").classList.remove("hidden");
+  }
+
+  async function executeCheckout() {
+    if (isSubmitting) return;
+    isSubmitting = true;
+
+    const confirmBtn = document.getElementById("pay-modal-confirm");
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = "Memproses...";
+
+    const tableNo = document.getElementById("pos-table").value;
+    const cart = window.getCart ? window.getCart() : [];
+    let paid = window.getTotal ? window.getTotal() : 0;
+
+    if (selectedPaymentMethod === "cash") {
+      const cashInput = document.getElementById("cash-paid-input");
+      paid = Number(cashInput.value || paid);
+    }
+
+    // Open blank window synchronously (inside the click) to avoid popup blockers
+    const receiptWindow = window.open("", "_blank");
+    if (receiptWindow) {
+      receiptWindow.document.write(
+        "<html><head><title>Memuat Struk...</title></head><body style='font-family:sans-serif;text-align:center;padding-top:50px;'><h2>Menyiapkan Struk Pesanan...</h2></body></html>",
+      );
+    }
+
+    try {
+      const payload = {
+        table_no: tableNo,
+        method: selectedPaymentMethod,
+        paid: paid,
+        checkout_token: window.CHECKOUT_TOKEN,
+        items: cart.map((item) => ({
+          menu_id: item.menu_id,
+          quantity: item.quantity,
+          modifier_ids: item.modifiers.map((m) => m.modifier_id),
+        })),
+      };
+
+      const res = await apiFetch("api_checkout.php", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+
+      // Single-use token: store the fresh one for the next order
+      if (res.next_token) {
+        window.CHECKOUT_TOKEN = res.next_token;
+      }
+
+      showToast(`Pesanan #${res.order_no} berhasil disimpan!`, "success");
+      closePaymentModal();
+
+      if (window.clearCart) window.clearCart();
+      selectedPaymentMethod = null;
+      document
+        .querySelectorAll(".pay-method-btn")
+        .forEach((b) =>
+          b.classList.remove("border-[#1B4D3E]", "bg-emerald-50", "text-[#1B4D3E]"),
+        );
+      const tableSelect = document.getElementById("pos-table");
+      if (tableSelect) tableSelect.value = "";
+
+      const receiptUrl = `receipt.php?id=${encodeURIComponent(res.transaction_id)}`;
+      if (receiptWindow) {
+        receiptWindow.location.href = receiptUrl;
+      } else {
+        window.open(receiptUrl, "_blank");
+      }
+    } catch (err) {
+      if (receiptWindow) receiptWindow.close();
+      showToast(err.message || "Gagal menyimpan pesanan.", "error");
+    } finally {
+      isSubmitting = false;
+      confirmBtn.textContent = "Ya, Selesaikan";
+      validateCheckoutReady();
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", initPaymentUI);
+})();
