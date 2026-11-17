@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin Menu & Modifier Management UI (SRS-F03)
+ * Admin Menu & Modifier Management UI (SRS-F03) - Figma Slides 8, 9, 10 Match
  * Kedai Paradise POS
  */
 require_once __DIR__ . '/includes/bootstrap.php';
@@ -36,11 +36,11 @@ foreach ($itemsRaw as $item) {
     $gid = (int)$item['group_id'];
     $itemsByGroup[$gid][] = [
         'modifier_id' => (int)$item['modifier_id'],
-        'group_id' => $gid,
-        'name' => $item['name'],
+        'group_id'    => $gid,
+        'name'        => $item['name'],
         'extra_price' => (int)$item['extra_price'],
-        'extra_cost' => (int)$item['extra_cost'],
-        'available' => (int)$item['available'],
+        'extra_cost'  => (int)$item['extra_cost'],
+        'available'   => (int)$item['available'],
     ];
 }
 
@@ -49,263 +49,389 @@ foreach ($groupsRaw as $grp) {
     $mid = (int)$grp['menu_id'];
     $gid = (int)$grp['group_id'];
     $groupsByMenu[$mid][] = [
-        'group_id' => $gid,
-        'menu_id' => $mid,
-        'name' => $grp['name'],
-        'type' => $grp['type'],
+        'group_id'    => $gid,
+        'menu_id'     => $mid,
+        'name'        => $grp['name'],
+        'type'        => $grp['type'],
         'is_required' => (int)$grp['is_required'],
-        'items' => $itemsByMenuGroup = $itemsByGroup[$gid] ?? [],
+        'items'       => $itemsByGroup[$gid] ?? [],
     ];
 }
 
-$pageTitle = 'Manajemen Menu';
+// Compute top KPIs for Figma Slide 8
+$totalCatalogCount = count($menus);
+$activeMenuCount = 0;
+$soldOutCount = 0;
+$menusWithVariants = 0;
+$marginPctSum = 0.0;
+$marginPctCount = 0;
+
+foreach ($menus as $m) {
+    $mid = (int)$m['menu_id'];
+    if ((int)$m['status'] === 1) {
+        $activeMenuCount++;
+        if ((int)$m['available'] === 0) {
+            $soldOutCount++;
+        }
+        $p = (int)$m['price'];
+        $c = (int)$m['cost_price'];
+        if ($p > 0) {
+            $marginPctSum += (($p - $c) / $p) * 100.0;
+            $marginPctCount++;
+        }
+    }
+    if (!empty($groupsByMenu[$mid])) {
+        $menusWithVariants++;
+    }
+}
+$avgMarginPct = $marginPctCount > 0 ? round($marginPctSum / $marginPctCount, 1) : 0.0;
+$activeRatioPct = $totalCatalogCount > 0 ? round(($activeMenuCount / $totalCatalogCount) * 100) : 0;
+
+$pageTitle = 'Manajemen Katalog Menu & Harga - Kedai Paradise';
 include __DIR__ . '/includes/layout_header.php';
 ?>
 
-<div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+<div class="space-y-6">
+    <!-- Top Header -->
     <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-[#2C3E50]">Manajemen Menu & Opsi</h1>
-            <p class="text-sm text-gray-600">Kelola daftar menu, harga jual, HPP, ketersediaan, serta grup opsi tambahan.</p>
+            <span class="text-xs font-bold uppercase tracking-wider text-[#1B4D3E]">Katalog Produk</span>
+            <h1 class="text-2xl font-extrabold text-[#1E293B] uppercase">MANAJEMEN KATALOG MENU &amp; HARGA</h1>
         </div>
         <button type="button" id="btn-add-menu"
-            class="bg-[#1B4D3E] hover:bg-[#153d31] text-white font-semibold px-4 py-2.5 rounded-lg text-sm transition self-start sm:self-auto">
-            + Tambah Menu
+            class="bg-[#9E3B1B] hover:bg-[#822F14] text-white font-extrabold px-5 py-2.5 rounded-xl text-xs uppercase tracking-wider shadow-sm transition self-start sm:self-auto">
+            + Tambah Menu Baru
         </button>
     </div>
 
+    <!-- 4 KPI Summary Cards (Figma Slide 8) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E4DD] flex items-center justify-between">
+            <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total Menu Aktif</span>
+                <div class="text-3xl font-extrabold text-[#1E293B] mt-1"><?= $activeMenuCount ?></div>
+                <span class="text-xs text-gray-500"><?= $activeRatioPct ?>% dari total katalog</span>
+            </div>
+            <span class="w-12 h-12 rounded-2xl bg-emerald-100 text-[#1B4D3E] flex items-center justify-center text-xl font-bold">&#127860;</span>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E4DD] flex items-center justify-between">
+            <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Rata-Rata Margin Menu</span>
+                <div class="text-3xl font-extrabold text-[#1E293B] mt-1"><?= number_format($avgMarginPct, 1, ',', '.') ?>%</div>
+                <span class="text-xs text-emerald-700 font-medium">Margin Kotor Katalog</span>
+            </div>
+            <span class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center text-xl font-bold">%</span>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E4DD] flex items-center justify-between">
+            <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Stok Kritis / Habis</span>
+                <div class="text-3xl font-extrabold <?= $soldOutCount > 0 ? 'text-red-600' : 'text-[#1E293B]' ?> mt-1"><?= $soldOutCount ?></div>
+                <span class="text-xs text-gray-500"><?= $soldOutCount > 0 ? 'Perlu pengadaan bahan' : 'Stok aman tersedia' ?></span>
+            </div>
+            <span class="w-12 h-12 rounded-2xl bg-red-100 text-red-700 flex items-center justify-center text-xl font-bold">&#128722;</span>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-[#E6E4DD] flex items-center justify-between">
+            <div>
+                <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Menu Dengan Varian</span>
+                <div class="text-3xl font-extrabold text-[#1E293B] mt-1"><?= $menusWithVariants ?></div>
+                <span class="text-xs text-gray-500">Level pedas, olahan, suhu</span>
+            </div>
+            <span class="w-12 h-12 rounded-2xl bg-gray-100 text-gray-700 flex items-center justify-center text-xl font-bold">&#9776;</span>
+        </div>
+    </div>
+
     <!-- Filter Bar -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-        <div class="flex-1">
-            <input type="text" id="filter-search" placeholder="Cari nama menu..."
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4D3E]">
+    <div class="bg-white rounded-2xl shadow-sm border border-[#E6E4DD] p-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 flex-1">
+            <div class="flex-1 max-w-md">
+                <input type="text" id="filter-search" placeholder="Cari nama menu..."
+                    class="w-full bg-[#F8F7F4] border border-gray-300 rounded-xl px-3.5 py-2 text-sm focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B4D3E]">
+            </div>
+            <div class="sm:w-48">
+                <select id="filter-category"
+                    class="w-full bg-[#F8F7F4] border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B4D3E]">
+                    <option value="">Semua kategori</option>
+                    <?php foreach ($categories as $cat): ?>
+                        <option value="<?= e($cat) ?>"><?= e($cat) ?></option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+            <label class="inline-flex items-center gap-2 text-xs font-bold text-gray-700 cursor-pointer select-none">
+                <input type="checkbox" id="filter-inactive" class="rounded text-[#1B4D3E] focus:ring-[#1B4D3E] w-4 h-4">
+                <span>Tampilkan Menu Nonaktif</span>
+            </label>
         </div>
-        <div class="sm:w-52">
-            <select id="filter-category"
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1B4D3E]">
-                <option value="">Semua Kategori</option>
-                <?php foreach ($categories as $cat): ?>
-                    <option value="<?= e($cat) ?>"><?= e($cat) ?></option>
-                <?php endforeach; ?>
-            </select>
-        </div>
-        <label class="inline-flex items-center gap-2 text-sm text-gray-700 cursor-pointer select-none">
-            <input type="checkbox" id="filter-inactive" class="rounded text-[#1B4D3E] focus:ring-[#1B4D3E]">
-            <span>Tampilkan menu nonaktif</span>
-        </label>
+        <span class="bg-[#F8F7F4] border border-gray-200 text-gray-600 text-xs font-bold px-3 py-1.5 rounded-full self-start sm:self-auto">
+            <?= $totalCatalogCount ?> Menu Terdaftar
+        </span>
     </div>
 
     <!-- Menu Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-        <table class="w-full text-left border-collapse text-sm">
-            <thead>
-                <tr class="bg-gray-50 border-b border-gray-200 text-[#2C3E50] font-semibold">
-                    <th class="py-3 px-4">Foto</th>
-                    <th class="py-3 px-4">Nama Menu</th>
-                    <th class="py-3 px-4">Kategori</th>
-                    <th class="py-3 px-4 text-right">Harga Jual</th>
-                    <th class="py-3 px-4 text-right">HPP</th>
-                    <th class="py-3 px-4 text-right">Margin</th>
-                    <th class="py-3 px-4 text-center">Ketersediaan</th>
-                    <th class="py-3 px-4 text-center">Status</th>
-                    <th class="py-3 px-4 text-right">Aksi</th>
-                </tr>
-            </thead>
-            <tbody id="menu-table-body" class="divide-y divide-gray-100">
-                <?php foreach ($menus as $m):
-                    $mid = (int)$m['menu_id'];
-                    $price = (int)$m['price'];
-                    $cost = (int)$m['cost_price'];
-                    $margin = $price - $cost;
-                    $groups = $groupsByMenu[$mid] ?? [];
-                    $hasBrokenMandatory = false;
-                    foreach ($groups as $g) {
-                        if ((int)$g['is_required'] === 1) {
-                            $availCount = 0;
-                            foreach ($g['items'] as $gi) {
-                                if ((int)$gi['available'] === 1) {
-                                    $availCount++;
+    <div class="bg-white rounded-2xl shadow-sm border border-[#E6E4DD] overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-[#F8F7F4] border-b border-[#E6E4DD] text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        <th class="py-3.5 px-4">Foto</th>
+                        <th class="py-3.5 px-4">Nama Menu</th>
+                        <th class="py-3.5 px-4">Kategori</th>
+                        <th class="py-3.5 px-4 text-right">Harga Jual</th>
+                        <th class="py-3.5 px-4 text-right">HPP (Modal)</th>
+                        <th class="py-3.5 px-4 text-right">Margin</th>
+                        <th class="py-3.5 px-4 text-center">Pilihan</th>
+                        <th class="py-3.5 px-4 text-center">Ketersediaan</th>
+                        <th class="py-3.5 px-4 text-center">Status</th>
+                        <th class="py-3.5 px-4 text-right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody id="menu-table-body" class="divide-y divide-gray-100">
+                    <?php foreach ($menus as $m):
+                        $mid = (int)$m['menu_id'];
+                        $price = (int)$m['price'];
+                        $cost = (int)$m['cost_price'];
+                        $margin = $price - $cost;
+                        $marginPct = $price > 0 ? round(($margin / $price) * 100, 1) : 0;
+                        $groups = $groupsByMenu[$mid] ?? [];
+                        $groupNames = array_map(fn($g) => $g['name'], $groups);
+                        $skuCode = '#KP-' . strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $m['category'] ?: 'MNU'), 0, 3)) . '-' . str_pad((string)$mid, 2, '0', STR_PAD_LEFT);
+                        $photoSrc = !empty($m['photo']) ? ('uploads/' . ltrim((string)$m['photo'], '/')) : '';
+
+                        $hasBrokenMandatory = false;
+                        foreach ($groups as $g) {
+                            if ((int)$g['is_required'] === 1) {
+                                $availCount = 0;
+                                foreach ($g['items'] as $gi) {
+                                    if ((int)$gi['available'] === 1) {
+                                        $availCount++;
+                                    }
+                                }
+                                if ($availCount === 0) {
+                                    $hasBrokenMandatory = true;
+                                    break;
                                 }
                             }
-                            if ($availCount === 0) {
-                                $hasBrokenMandatory = true;
-                                break;
-                            }
                         }
-                    }
-                ?>
-                <tr class="menu-row hover:bg-gray-50/70 <?= (int)$m['status'] === 0 ? 'opacity-60 bg-gray-50' : '' ?>"
-                    data-name="<?= e(mb_strtolower($m['name'])) ?>"
-                    data-category="<?= e($m['category']) ?>"
-                    data-status="<?= (int)$m['status'] ?>">
-                    <td class="py-3 px-4">
-                        <?php if (!empty($m['photo'])): ?>
-                            <img src="<?= e($m['photo']) ?>" alt="<?= e($m['name']) ?>"
-                                class="w-12 h-12 rounded-lg object-cover border border-gray-200">
-                        <?php else: ?>
-                            <div class="w-12 h-12 rounded-lg bg-emerald-50 text-[#1B4D3E] flex items-center justify-center font-bold text-xs border border-emerald-100">
-                                FOTO
-                            </div>
-                        <?php endif; ?>
-                    </td>
-                    <td class="py-3 px-4 font-semibold text-[#2C3E50]">
-                        <div><?= e($m['name']) ?></div>
-                        <?php if ($hasBrokenMandatory): ?>
-                            <span class="inline-block mt-1 text-[11px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-medium">
-                                Peringatan: Grup wajib tidak memiliki item tersedia!
+                    ?>
+                    <tr class="menu-row hover:bg-[#F8F7F4]/60 <?= (int)$m['status'] === 0 ? 'opacity-60 bg-gray-50/70' : '' ?>"
+                        data-name="<?= e(mb_strtolower($m['name'])) ?>"
+                        data-category="<?= e($m['category']) ?>"
+                        data-status="<?= (int)$m['status'] ?>">
+                        <td class="py-3.5 px-4">
+                            <?php if ($photoSrc !== ''): ?>
+                                <img src="<?= e($photoSrc) ?>" alt="<?= e($m['name']) ?>"
+                                    class="w-12 h-12 rounded-xl object-cover border border-gray-200">
+                            <?php else: ?>
+                                <div class="w-12 h-12 rounded-xl bg-[#F8F7F4] text-[#1B4D3E] flex items-center justify-center font-bold text-base border border-[#E6E4DD]">
+                                    <?= $m['category'] === 'Minuman' ? '&#129380;' : '&#127835;' ?>
+                                </div>
+                            <?php endif; ?>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <div class="font-extrabold text-[#1E293B]"><?= e($m['name']) ?></div>
+                            <div class="text-[11px] font-mono text-gray-400"><?= e($skuCode) ?></div>
+                            <?php if ($hasBrokenMandatory): ?>
+                                <span class="inline-block mt-1 text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded font-bold">
+                                    &#9888; Grup wajib tanpa item tersedia!
+                                </span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="py-3.5 px-4">
+                            <span class="bg-[#F8F7F4] border border-gray-200 text-gray-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                                <?= e($m['category']) ?>
                             </span>
-                        <?php endif; ?>
-                    </td>
-                    <td class="py-3 px-4">
-                        <span class="bg-gray-100 text-gray-700 text-xs font-medium px-2.5 py-1 rounded-full">
-                            <?= e($m['category']) ?>
-                        </span>
-                    </td>
-                    <td class="py-3 px-4 text-right font-medium"><?= e(formatRupiah($price)) ?></td>
-                    <td class="py-3 px-4 text-right text-gray-600"><?= e(formatRupiah($cost)) ?></td>
-                    <td class="py-3 px-4 text-right font-semibold <?= $margin < 0 ? 'text-red-600' : 'text-emerald-700' ?>">
-                        <?= e(formatRupiah($margin)) ?>
-                    </td>
-                    <td class="py-3 px-4 text-center">
-                        <button type="button"
-                            class="btn-toggle-avail px-2.5 py-1 rounded-full text-xs font-semibold transition <?= (int)$m['available'] === 1 ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200' : 'bg-red-100 text-red-700 hover:bg-red-200' ?>"
-                            data-menu-id="<?= $mid ?>"
-                            data-available="<?= (int)$m['available'] ?>">
-                            <?= (int)$m['available'] === 1 ? 'Tersedia' : 'Habis' ?>
-                        </button>
-                    </td>
-                    <td class="py-3 px-4 text-center">
-                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold <?= (int)$m['status'] === 1 ? 'bg-blue-100 text-blue-800' : 'bg-gray-200 text-gray-700' ?>">
-                            <?= (int)$m['status'] === 1 ? 'Aktif' : 'Nonaktif' ?>
-                        </span>
-                    </td>
-                    <td class="py-3 px-4 text-right whitespace-nowrap space-x-1">
-                        <button type="button"
-                            class="btn-manage-modifiers px-2.5 py-1.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold border border-amber-200"
-                            data-menu-id="<?= $mid ?>">
-                            Pilihan (<?= count($groups) ?>)
-                        </button>
-                        <button type="button"
-                            class="btn-edit-menu px-2.5 py-1.5 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold"
-                            data-menu='<?= e(json_encode($m, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
-                            Ubah
-                        </button>
-                        <button type="button"
-                            class="btn-toggle-status px-2.5 py-1.5 rounded text-xs font-semibold <?= (int)$m['status'] === 1 ? 'bg-red-50 hover:bg-red-100 text-red-700' : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700' ?>"
-                            data-menu-id="<?= $mid ?>"
-                            data-next-status="<?= (int)$m['status'] === 1 ? 0 : 1 ?>">
-                            <?= (int)$m['status'] === 1 ? 'Nonaktifkan' : 'Aktifkan' ?>
-                        </button>
-                    </td>
-                </tr>
-                <?php endforeach; ?>
-            </tbody>
-        </table>
+                        </td>
+                        <td class="py-3.5 px-4 text-right font-extrabold text-[#1E293B]"><?= e(formatRupiah($price)) ?></td>
+                        <td class="py-3.5 px-4 text-right text-gray-500 font-medium"><?= e(formatRupiah($cost)) ?></td>
+                        <td class="py-3.5 px-4 text-right">
+                            <div class="font-extrabold <?= $margin < 0 ? 'text-red-600' : 'text-[#1B4D3E]' ?>"><?= e(formatRupiah($margin)) ?></div>
+                            <div class="text-[11px] font-bold <?= $margin < 0 ? 'text-red-500' : 'text-emerald-600' ?>"><?= number_format($marginPct, 1, ',', '.') ?>%</div>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <?php if (count($groups) > 0): ?>
+                                <span class="inline-block bg-emerald-100 text-[#1B4D3E] text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
+                                    <?= count($groups) ?> Grup
+                                </span>
+                                <div class="text-[10px] text-gray-400 truncate max-w-[110px] mx-auto mt-0.5"><?= e(implode(', ', $groupNames)) ?></div>
+                            <?php else: ?>
+                                <span class="text-xs text-gray-300">--</span>
+                            <?php endif; ?>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <button type="button"
+                                class="btn-toggle-avail px-3 py-1 rounded-full text-xs font-extrabold transition <?= (int)$m['available'] === 1 ? 'bg-emerald-100 text-[#1B4D3E] hover:bg-emerald-200' : 'bg-red-100 text-red-700 hover:bg-red-200' ?>"
+                                data-menu-id="<?= $mid ?>"
+                                data-available="<?= (int)$m['available'] ?>">
+                                &bull; <?= (int)$m['available'] === 1 ? 'Tersedia' : 'Habis' ?>
+                            </button>
+                        </td>
+                        <td class="py-3.5 px-4 text-center">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold <?= (int)$m['status'] === 1 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-gray-200 text-gray-600' ?>">
+                                &bull; <?= (int)$m['status'] === 1 ? 'Aktif' : 'Nonaktif' ?>
+                            </span>
+                        </td>
+                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1">
+                            <button type="button"
+                                class="btn-manage-modifiers px-2.5 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-[#9E3B1B] text-xs font-extrabold border border-orange-200"
+                                data-menu-id="<?= $mid ?>"
+                                data-menu-name="<?= e($m['name']) ?>"
+                                data-menu-price="<?= $price ?>"
+                                data-menu-cost="<?= $cost ?>">
+                                &#9776; Kelola Pilihan
+                            </button>
+                            <button type="button"
+                                class="btn-edit-menu px-2.5 py-1.5 rounded-lg bg-[#F8F7F4] hover:bg-gray-200 text-gray-700 border border-gray-200 text-xs font-bold"
+                                data-menu='<?= e(json_encode($m, JSON_HEX_APOS | JSON_HEX_QUOT)) ?>'>
+                                Ubah
+                            </button>
+                            <button type="button"
+                                class="btn-toggle-status px-2.5 py-1.5 rounded-lg text-xs font-bold border <?= (int)$m['status'] === 1 ? 'bg-white hover:bg-red-50 text-gray-600 border-gray-200' : 'bg-emerald-50 hover:bg-emerald-100 text-[#1B4D3E] border-emerald-200' ?>"
+                                data-menu-id="<?= $mid ?>"
+                                data-next-status="<?= (int)$m['status'] === 1 ? 0 : 1 ?>">
+                                <?= (int)$m['status'] === 1 ? 'Nonaktifkan' : 'Aktifkan' ?>
+                            </button>
+                        </td>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
-<!-- Add / Edit Menu Modal -->
-<div id="menu-modal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-lg overflow-hidden">
-        <div class="bg-[#1B4D3E] text-white px-5 py-3.5 flex justify-between items-center">
-            <h3 id="menu-modal-title" class="font-bold text-base">Tambah Menu</h3>
-            <button type="button" id="menu-modal-close" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+<!-- Add / Edit Menu Modal (Figma Slide 9) -->
+<div id="menu-modal" class="fixed inset-0 z-50 hidden bg-black/55 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#E6E4DD]">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <span class="w-9 h-9 rounded-xl bg-orange-50 text-[#9E3B1B] flex items-center justify-center font-bold">&#9998;</span>
+                <div>
+                    <h3 id="menu-modal-title" class="font-extrabold text-base text-[#1E293B]">Ubah Menu</h3>
+                    <p class="text-[11px] text-gray-400">Konfigurasi produk, harga jual, dan HPP</p>
+                </div>
+            </div>
+            <button type="button" id="menu-modal-close" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
         </div>
-        <form id="menu-form" class="p-5 space-y-4" enctype="multipart/form-data">
+        <form id="menu-form" class="p-6 space-y-4" enctype="multipart/form-data">
             <input type="hidden" name="action" id="form-action" value="menu_create">
             <input type="hidden" name="menu_id" id="form-menu-id" value="">
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div class="sm:col-span-2">
-                    <label class="block text-sm font-medium mb-1">Nama Menu <span class="text-red-600">*</span></label>
-                    <input type="text" name="name" id="form-name" required maxlength="100"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4D3E] focus:outline-none">
-                </div>
+            <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium mb-1">Kategori <span class="text-red-600">*</span></label>
-                    <input type="text" name="category" id="form-category" list="category-list" required maxlength="30" value="Lainnya"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4D3E] focus:outline-none">
+                    <div class="flex justify-between text-xs font-bold text-gray-700 mb-1">
+                        <span>Nama Menu <span class="text-red-600">*</span></span>
+                        <span class="text-gray-400 font-normal">Wajib diisi</span>
+                    </div>
+                    <input type="text" name="name" id="form-name" required maxlength="100"
+                        class="w-full bg-[#F8F7F4] border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-[#1B4D3E] focus:outline-none">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-xs font-bold text-gray-700 mb-1">
+                        <span>Kategori <span class="text-red-600">*</span></span>
+                        <span class="text-gray-400 font-normal">Maksimal 30 karakter</span>
+                    </div>
+                    <input type="text" name="category" id="form-category" list="category-list" required maxlength="30" value="Makanan"
+                        class="w-full bg-[#F8F7F4] border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-[#1B4D3E] focus:outline-none">
                     <datalist id="category-list">
                         <?php foreach ($categories as $cat): ?>
                             <option value="<?= e($cat) ?>"></option>
                         <?php endforeach; ?>
                     </datalist>
                 </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Harga Jual (Rp) <span class="text-red-600">*</span></label>
+                        <input type="number" name="price" id="form-price" required min="0" step="1" value="0"
+                            class="w-full bg-[#F8F7F4] border border-gray-300 rounded-xl px-3.5 py-2.5 text-base font-extrabold text-[#1E293B] focus:bg-white focus:ring-2 focus:ring-[#1B4D3E] focus:outline-none">
+                        <span class="text-[11px] text-gray-400">Harga untuk kasir &amp; struk</span>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 mb-1">Harga Modal / HPP (Rp) <span class="text-red-600">*</span></label>
+                        <input type="number" name="cost_price" id="form-cost" required min="0" step="1" value="0"
+                            class="w-full bg-[#F8F7F4] border border-gray-300 rounded-xl px-3.5 py-2.5 text-base font-extrabold text-[#1E293B] focus:bg-white focus:ring-2 focus:ring-[#1B4D3E] focus:outline-none">
+                        <span class="text-[11px] text-gray-400">Estimasi biaya bahan pokok</span>
+                    </div>
+                </div>
+
+                <div id="cost-warning" class="hidden text-xs bg-amber-50 border border-amber-300 text-amber-900 rounded-xl p-3.5 space-y-1">
+                    <div class="font-extrabold uppercase text-amber-900">&#9888; Peringatan Margin Negatif</div>
+                    <p>Harga jual lebih rendah dari harga modal (HPP). Menjual menu ini akan mengakibatkan kerugian pada laporan margin kotor harian.</p>
+                </div>
+
                 <div>
-                    <label class="block text-sm font-medium mb-1">Foto Menu (JPEG/PNG, maks 1 MB)</label>
+                    <div class="flex justify-between text-xs font-bold text-gray-700 mb-1">
+                        <span>Foto Menu</span>
+                        <span class="text-gray-400 font-normal">JPG/PNG, maksimal 1 MB</span>
+                    </div>
                     <input type="file" name="photo" id="form-photo" accept="image/jpeg,image/png"
-                        class="w-full text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:bg-emerald-50 file:text-[#1B4D3E] file:font-semibold">
+                        class="w-full text-xs text-gray-600 bg-[#F8F7F4] border border-gray-300 rounded-xl p-2 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-[#1B4D3E] file:text-white file:font-bold">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Harga Jual (Rp) <span class="text-red-600">*</span></label>
-                    <input type="number" name="price" id="form-price" required min="0" step="1" value="0"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4D3E] focus:outline-none">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Harga Pokok / HPP (Rp) <span class="text-red-600">*</span></label>
-                    <input type="number" name="cost_price" id="form-cost" required min="0" step="1" value="0"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#1B4D3E] focus:outline-none">
+
+                <div class="grid grid-cols-2 gap-3 pt-1">
+                    <label class="flex items-center justify-between bg-[#F8F7F4] border border-gray-200 rounded-xl p-3 cursor-pointer">
+                        <div>
+                            <div class="text-xs font-extrabold text-gray-800">Tersedia</div>
+                            <div class="text-[10px] text-gray-400">Tampil di layar kasir</div>
+                        </div>
+                        <input type="checkbox" name="available" id="form-available" value="1" checked class="rounded text-[#1B4D3E] w-4 h-4">
+                    </label>
+                    <label class="flex items-center justify-between bg-[#F8F7F4] border border-gray-200 rounded-xl p-3 cursor-pointer">
+                        <div>
+                            <div class="text-xs font-extrabold text-gray-800">Aktif</div>
+                            <div class="text-[10px] text-gray-400">Termasuk katalog</div>
+                        </div>
+                        <input type="checkbox" name="status" id="form-status" value="1" checked class="rounded text-[#1B4D3E] w-4 h-4">
+                    </label>
                 </div>
             </div>
 
-            <div id="cost-warning" class="hidden text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-lg p-2.5 font-medium">
-                Peringatan: Harga pokok (HPP) lebih besar dari harga jual!
-            </div>
-
-            <div class="flex items-center gap-6 pt-1">
-                <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="checkbox" name="available" id="form-available" value="1" checked class="rounded text-[#1B4D3E]">
-                    <span>Tersedia (Bisa dipesan)</span>
-                </label>
-                <label class="inline-flex items-center gap-2 text-sm cursor-pointer">
-                    <input type="checkbox" name="status" id="form-status" value="1" checked class="rounded text-[#1B4D3E]">
-                    <span>Status Aktif</span>
-                </label>
-            </div>
-
-            <div class="flex justify-end gap-2 pt-3 border-t">
+            <div class="flex justify-between gap-3 pt-4 border-t border-gray-100">
                 <button type="button" id="menu-modal-cancel"
-                    class="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium hover:bg-gray-50">Batal</button>
+                    class="px-5 py-2.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-50">Batal</button>
                 <button type="submit"
-                    class="px-4 py-2 rounded-lg bg-[#1B4D3E] hover:bg-[#153d31] text-white text-sm font-semibold">Simpan</button>
+                    class="px-6 py-2.5 rounded-xl bg-[#9E3B1B] hover:bg-[#822F14] text-white text-xs font-extrabold uppercase tracking-wider shadow-sm transition">&#128190; Simpan</button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- Modifier Management Modal -->
-<div id="modifier-manage-modal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
-        <div class="bg-[#1B4D3E] text-white px-5 py-3.5 flex justify-between items-center">
+<!-- Modifier Management Modal (Figma Slide 10) -->
+<div id="modifier-manage-modal" class="fixed inset-0 z-50 hidden bg-black/55 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden border border-[#E6E4DD]">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-[#F8F7F4]">
             <div>
-                <h3 id="mod-modal-title" class="font-bold text-base">Kelola Pilihan Menu</h3>
-                <p class="text-xs text-emerald-100">Maksimal 5 grup per menu, dan maksimal 10 item per grup.</p>
+                <h3 id="mod-modal-title" class="font-extrabold text-base text-[#1E293B] uppercase">KELOLA PILIHAN &amp; MODIFIERS</h3>
+                <p id="mod-modal-subtitle" class="text-xs text-gray-500 mt-0.5">Batas: Maksimal 5 Grup per Menu, Maksimal 10 Pilihan per Grup</p>
             </div>
-            <button type="button" id="mod-modal-close" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+            <button type="button" id="mod-modal-close" class="text-gray-400 hover:text-gray-700 text-2xl leading-none font-bold">&times;</button>
         </div>
 
-        <div class="p-5 overflow-y-auto flex-1 space-y-5">
+        <div class="p-6 overflow-y-auto flex-1 space-y-5">
             <!-- Add Group Form -->
-            <form id="form-add-group" class="bg-gray-50 border border-gray-200 rounded-lg p-3.5 flex flex-wrap items-end gap-3">
+            <form id="form-add-group" class="bg-[#F8F7F4] border border-[#E6E4DD] rounded-xl p-4 flex flex-wrap items-end gap-3">
                 <input type="hidden" name="menu_id" id="mod-menu-id" value="">
                 <div class="flex-1 min-w-[180px]">
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Nama Grup Baru</label>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Nama Grup Baru</label>
                     <input type="text" name="name" id="new-group-name" required maxlength="60" placeholder="Misal: Tingkat Pedas"
-                        class="w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm">
+                        class="w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm">
                 </div>
                 <div>
-                    <label class="block text-xs font-semibold text-gray-700 mb-1">Tipe Pilihan</label>
-                    <select name="type" id="new-group-type" class="border border-gray-300 rounded px-2.5 py-1.5 text-sm">
-                        <option value="single">Satu Pilihan (Radio)</option>
-                        <option value="multiple">Banyak Pilihan (Checkbox)</option>
+                    <label class="block text-xs font-bold text-gray-700 mb-1">Tipe Pilihan</label>
+                    <select name="type" id="new-group-type" class="bg-white border border-gray-300 rounded-xl px-3 py-2 text-sm font-semibold">
+                        <option value="single">Single Choice (Pilih 1)</option>
+                        <option value="multiple">Multi Choice (Bebas)</option>
                     </select>
                 </div>
-                <label class="inline-flex items-center gap-1.5 text-xs font-medium text-gray-700 pb-2 cursor-pointer">
-                    <input type="checkbox" name="is_required" id="new-group-req" value="1" class="rounded text-[#1B4D3E]">
-                    <span>Wajib dipilih</span>
+                <label class="inline-flex items-center gap-1.5 text-xs font-bold text-gray-700 pb-2.5 cursor-pointer">
+                    <input type="checkbox" name="is_required" id="new-group-req" value="1" class="rounded text-[#1B4D3E] w-4 h-4">
+                    <span>Wajib Diisi</span>
                 </label>
                 <button type="submit"
-                    class="bg-[#1B4D3E] hover:bg-[#153d31] text-white text-xs font-semibold px-3.5 py-2 rounded transition">
+                    class="bg-[#1B4D3E] hover:bg-[#153d31] text-white text-xs font-extrabold px-4 py-2.5 rounded-xl transition">
                     + Tambah Grup
                 </button>
             </form>
@@ -343,7 +469,6 @@ document.addEventListener('DOMContentLoaded', function () {
     showInactive.addEventListener('change', applyTableFilters);
     applyTableFilters();
 
-    // Cost > Price warning
     const priceInput = document.getElementById('form-price');
     const costInput = document.getElementById('form-cost');
     const costWarning = document.getElementById('cost-warning');
@@ -355,7 +480,6 @@ document.addEventListener('DOMContentLoaded', function () {
     priceInput.addEventListener('input', checkMarginWarning);
     costInput.addEventListener('input', checkMarginWarning);
 
-    // Open Add/Edit Menu Modal
     const menuModal = document.getElementById('menu-modal');
     const menuForm = document.getElementById('menu-form');
 
@@ -364,7 +488,7 @@ document.addEventListener('DOMContentLoaded', function () {
         document.getElementById('menu-modal-title').textContent = 'Tambah Menu Baru';
         document.getElementById('form-action').value = 'menu_create';
         document.getElementById('form-menu-id').value = '';
-        document.getElementById('form-category').value = 'Lainnya';
+        document.getElementById('form-category').value = 'Makanan';
         document.getElementById('form-available').checked = true;
         document.getElementById('form-status').checked = true;
         checkMarginWarning();
@@ -393,7 +517,6 @@ document.addEventListener('DOMContentLoaded', function () {
     document.getElementById('menu-modal-close').addEventListener('click', closeMenuModal);
     document.getElementById('menu-modal-cancel').addEventListener('click', closeMenuModal);
 
-    // Submit Menu Form (multipart/form-data)
     menuForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const fd = new FormData(menuForm);
@@ -415,7 +538,6 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
-    // Toggle Availability
     document.querySelectorAll('.btn-toggle-avail').forEach(btn => {
         btn.addEventListener('click', async () => {
             const menuId = Number(btn.dataset.menuId);
@@ -432,7 +554,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Toggle Active/Inactive Status
     document.querySelectorAll('.btn-toggle-status').forEach(btn => {
         btn.addEventListener('click', async () => {
             const menuId = Number(btn.dataset.menuId);
@@ -449,87 +570,89 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Modifier Management Modal
     const modModal = document.getElementById('modifier-manage-modal');
     const modGroupsList = document.getElementById('mod-groups-list');
     let currentModMenuId = null;
 
-    function renderModifierGroups(menuId) {
+    function renderModifierGroups(menuId, menuName, menuPrice, menuCost) {
         currentModMenuId = Number(menuId);
         document.getElementById('mod-menu-id').value = currentModMenuId;
         const groups = GROUPS_BY_MENU[currentModMenuId] || [];
+        document.getElementById('mod-modal-title').textContent = 'KELOLA PILIHAN & MODIFIERS: ' + (menuName || '');
+        document.getElementById('mod-modal-subtitle').textContent =
+            `Harga Dasar: ${formatRupiah(Number(menuPrice || 0))} | HPP: ${formatRupiah(Number(menuCost || 0))} • ${groups.length}/5 Grup Terpakai`;
 
         if (groups.length === 0) {
-            modGroupsList.innerHTML = '<p class="text-sm text-gray-500 text-center py-6">Belum ada grup opsi untuk menu ini.</p>';
+            modGroupsList.innerHTML = '<p class="text-sm text-gray-500 text-center py-6 bg-[#F8F7F4] rounded-xl">Belum ada grup opsi untuk menu ini.</p>';
             return;
         }
 
-        modGroupsList.innerHTML = groups.map(g => {
+        modGroupsList.innerHTML = groups.map((g, idx) => {
             const availItemsCount = (g.items || []).filter(i => Number(i.available) === 1).length;
             const warnBanner = (Number(g.is_required) === 1 && availItemsCount === 0)
-                ? `<div class="mt-2 text-xs bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 rounded">
-                     Peringatan: Grup wajib ini belum memiliki item yang tersedia! Kasir tidak akan bisa menambahkan menu ini ke keranjang.
+                ? `<div class="mt-2 text-xs bg-amber-50 border border-amber-200 text-amber-800 px-3 py-1.5 rounded-lg font-medium">
+                     &#9888; Peringatan: Grup wajib ini belum memiliki item yang tersedia!
                    </div>`
                 : '';
 
             const itemsRows = (g.items || []).map(item => `
-                <div class="flex flex-wrap items-center justify-between gap-2 py-2 border-b border-gray-100 last:border-b-0 text-xs">
-                    <div class="font-medium text-gray-800">${item.name}</div>
+                <div class="flex flex-wrap items-center justify-between gap-2 py-2.5 px-3 bg-[#F8F7F4] rounded-xl text-xs">
+                    <div class="font-bold text-gray-800">${item.name}</div>
                     <div class="flex items-center gap-3">
-                        <span>Harga: <strong>+${formatRupiah(item.extra_price)}</strong></span>
+                        <span>Harga Tambahan: <strong>+${formatRupiah(item.extra_price)}</strong></span>
                         <span class="text-gray-500">HPP: +${formatRupiah(item.extra_cost)}</span>
-                        <button type="button" class="btn-item-avail px-2 py-0.5 rounded font-semibold ${Number(item.available) === 1 ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-700'}"
+                        <button type="button" class="btn-item-avail px-2.5 py-0.5 rounded-full font-extrabold ${Number(item.available) === 1 ? 'bg-emerald-100 text-[#1B4D3E]' : 'bg-red-100 text-red-700'}"
                             data-item='${JSON.stringify(item).replace(/'/g, "&#39;")}'>
                             ${Number(item.available) === 1 ? 'Tersedia' : 'Habis'}
                         </button>
-                        <button type="button" class="btn-delete-item text-red-600 hover:underline font-medium"
-                            data-modifier-id="${item.modifier_id}">Hapus</button>
+                        <button type="button" class="btn-delete-item text-red-600 hover:underline font-bold"
+                            data-modifier-id="${item.modifier_id}">&#128465; Hapus</button>
                     </div>
                 </div>
             `).join('');
 
             return `
-                <div class="border border-gray-200 rounded-lg p-4 space-y-3">
+                <div class="border border-[#E6E4DD] rounded-2xl p-4 space-y-3 bg-white shadow-sm">
                     <div class="flex items-center justify-between">
-                        <div>
-                            <span class="font-bold text-sm text-[#2C3E50]">${g.name}</span>
-                            <span class="ml-2 text-xs px-2 py-0.5 rounded bg-gray-100 text-gray-700">${g.type === 'single' ? 'Satu Pilihan' : 'Banyak Pilihan'}</span>
-                            <span class="ml-1 text-xs px-2 py-0.5 rounded ${Number(g.is_required) === 1 ? 'bg-red-100 text-red-700 font-semibold' : 'bg-gray-100 text-gray-600'}">
-                                ${Number(g.is_required) === 1 ? 'Wajib' : 'Opsional'}
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="w-6 h-6 rounded-full bg-[#1B4D3E] text-white text-xs font-extrabold flex items-center justify-center">${idx + 1}</span>
+                            <span class="font-extrabold text-sm text-[#1E293B]">GRUP ${idx + 1}: ${g.name}</span>
+                            <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700">${g.type === 'single' ? 'Single Choice (Pilih 1)' : 'Multi Choice (Bebas)'}</span>
+                            <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${Number(g.is_required) === 1 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}">
+                                ${Number(g.is_required) === 1 ? 'Wajib Diisi' : 'Opsional'}
                             </span>
                         </div>
-                        <button type="button" class="btn-delete-group text-xs text-red-600 hover:underline font-semibold"
+                        <button type="button" class="btn-delete-group text-xs text-red-600 hover:underline font-bold"
                             data-group-id="${g.group_id}">Hapus Grup</button>
                     </div>
                     ${warnBanner}
-                    <div class="pl-2 border-l-2 border-emerald-700/30 space-y-1">
+                    <div class="space-y-1.5">
                         ${itemsRows || '<p class="text-xs text-gray-400">Belum ada item opsi.</p>'}
                     </div>
-                    <form class="form-add-item flex flex-wrap items-end gap-2 pt-2 border-t border-gray-100" data-group-id="${g.group_id}">
+                    <form class="form-add-item flex flex-wrap items-end gap-2 pt-3 border-t border-gray-100" data-group-id="${g.group_id}">
                         <div class="flex-1 min-w-[140px]">
-                            <label class="block text-[11px] text-gray-500">Nama Opsi</label>
-                            <input type="text" name="name" required maxlength="60" placeholder="Misal: Level 3 / Telur"
-                                class="w-full border border-gray-300 rounded px-2 py-1 text-xs">
+                            <label class="block text-[11px] font-bold text-gray-500 mb-0.5">Nama Pilihan Baru</label>
+                            <input type="text" name="name" required maxlength="60" placeholder="Misal: Level 3 / Telur Tambahan"
+                                class="w-full bg-[#F8F7F4] border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs">
                         </div>
                         <div class="w-28">
-                            <label class="block text-[11px] text-gray-500">+Harga (Rp)</label>
+                            <label class="block text-[11px] font-bold text-gray-500 mb-0.5">+Harga (Rp)</label>
                             <input type="number" name="extra_price" required min="0" value="0"
-                                class="w-full border border-gray-300 rounded px-2 py-1 text-xs">
+                                class="w-full bg-[#F8F7F4] border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs">
                         </div>
                         <div class="w-28">
-                            <label class="block text-[11px] text-gray-500">+HPP (Rp)</label>
+                            <label class="block text-[11px] font-bold text-gray-500 mb-0.5">+HPP (Rp)</label>
                             <input type="number" name="extra_cost" required min="0" value="0"
-                                class="w-full border border-gray-300 rounded px-2 py-1 text-xs">
+                                class="w-full bg-[#F8F7F4] border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs">
                         </div>
-                        <button type="submit" class="bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold px-3 py-1.5 rounded">
-                            + Item
+                        <button type="submit" class="bg-[#9E3B1B] hover:bg-[#822F14] text-white text-xs font-extrabold px-3.5 py-2 rounded-lg">
+                            + Tambah Pilihan Item
                         </button>
                     </form>
                 </div>
             `;
         }).join('');
 
-        // Bind group delete
         modGroupsList.querySelectorAll('.btn-delete-group').forEach(btn => {
             btn.addEventListener('click', async () => {
                 if (!confirm('Hapus grup opsi ini? Transaksi lama tidak terpengaruh.')) return;
@@ -545,7 +668,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        // Bind item add
         modGroupsList.querySelectorAll('.form-add-item').forEach(form => {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -572,7 +694,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        // Bind item toggle available
         modGroupsList.querySelectorAll('.btn-item-avail').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const item = JSON.parse(btn.dataset.item);
@@ -595,7 +716,6 @@ document.addEventListener('DOMContentLoaded', function () {
             });
         });
 
-        // Bind item delete
         modGroupsList.querySelectorAll('.btn-delete-item').forEach(btn => {
             btn.addEventListener('click', async () => {
                 if (!confirm('Hapus item opsi ini? Transaksi lama tidak terpengaruh.')) return;
@@ -614,7 +734,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.btn-manage-modifiers').forEach(btn => {
         btn.addEventListener('click', () => {
-            renderModifierGroups(btn.dataset.menuId);
+            renderModifierGroups(btn.dataset.menuId, btn.dataset.menuName, btn.dataset.menuPrice, btn.dataset.menuCost);
             modModal.classList.remove('hidden');
         });
     });

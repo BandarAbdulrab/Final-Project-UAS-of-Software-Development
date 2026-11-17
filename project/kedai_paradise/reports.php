@@ -1,13 +1,13 @@
 <?php
 /**
- * Laporan Keuangan & Ringkasan Penjualan (Admin Only) - SRS-F10
+ * Laporan Keuangan & Ringkasan Penjualan (Admin Only) - SRS-F10 (Figma Slide 13 Match)
  */
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/auth_check.php';
 require_once __DIR__ . '/includes/report_queries.php';
 requireRole(['admin']);
 
-$pageTitle = 'Laporan Keuangan - Kedai Paradise';
+$pageTitle = 'Laporan Ringkasan Penjualan & Keuangan - Kedai Paradise';
 
 $fromDate = $_GET['from'] ?? date('Y-m-01');
 $toDate   = $_GET['to'] ?? date('Y-m-d');
@@ -22,169 +22,175 @@ $poolData   = getPoolBreakdown($pdo, $fromDate, $toDate, $kpi);
 $methodData = getPaymentMethodBreakdown($pdo, $fromDate, $toDate);
 $dailyRows  = getDailyBreakdown($pdo, $fromDate, $toDate, $sort, $dir);
 
+$rev = (int)($kpi['total_revenue'] ?? 0);
+$gp  = (int)($kpi['total_gross_profit'] ?? 0);
+$np  = (int)($kpi['total_net_profit'] ?? 0);
+$gpMargin = $rev > 0 ? round(($gp / $rev) * 100, 1) : 0.0;
+$npMargin = $rev > 0 ? round(($np / $rev) * 100, 1) : 0.0;
+
 function sortLinkReport(string $col, string $label, string $currentSort, string $currentDir, string $from, string $to, string $align = 'left'): string {
     $nextDir = ($currentSort === $col && $currentDir === 'asc') ? 'desc' : 'asc';
-    $arrow = '';
-    if ($currentSort === $col) {
-        $arrow = $currentDir === 'asc' ? ' ▲' : ' ▼';
-    }
+    $arrow = $currentSort === $col ? ($currentDir === 'asc' ? ' &#9650;' : ' &#9660;') : ' &#8693;';
     $url = 'reports.php?' . http_build_query(['from' => $from, 'to' => $to, 'sort' => $col, 'dir' => $nextDir]);
     $alignClass = $align === 'right' ? 'text-right' : ($align === 'center' ? 'text-center' : 'text-left');
-    return '<th class="p-3 ' . $alignClass . '"><a href="' . e($url) . '" class="hover:text-[#1B4D3E] font-semibold">' . e($label) . $arrow . '</a></th>';
+    return '<th class="p-3.5 ' . $alignClass . '"><a href="' . e($url) . '" class="hover:text-[#1B4D3E] font-bold whitespace-nowrap">' . e($label) . '<span class="text-[10px] text-gray-400">' . $arrow . '</span></a></th>';
 }
 
 include __DIR__ . '/includes/layout_header.php';
 ?>
 
 <div class="space-y-6">
-    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <!-- Top Header & Filter Bar -->
+    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-[#1B4D3E]">Laporan Keuangan & Penjualan</h1>
-            <p class="text-sm text-gray-600">Audit omset, laba bersih, dan keseimbangan pool dana.</p>
+            <span class="text-xs font-bold uppercase tracking-wider text-[#1B4D3E]">Konsolidasi Finansial &amp; Kasir</span>
+            <h1 class="text-2xl font-extrabold text-[#1E293B] uppercase">LAPORAN RINGKASAN PENJUALAN &amp; KEUANGAN</h1>
         </div>
-        <form method="GET" class="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="sort" value="<?= e($sort) ?>">
-            <input type="hidden" name="dir" value="<?= e($dir) ?>">
-            <input type="date" name="from" value="<?= e($fromDate) ?>" class="border border-gray-300 rounded px-3 py-1.5 text-sm">
-            <span class="text-gray-500">s/d</span>
-            <input type="date" name="to" value="<?= e($toDate) ?>" class="border border-gray-300 rounded px-3 py-1.5 text-sm">
-            <button type="submit" class="bg-[#1B4D3E] text-white px-4 py-1.5 rounded text-sm hover:bg-[#153d31]">Filter</button>
-        </form>
-    </div>
-
-    <!-- Kartu KPI Eksekutif -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <p class="text-xs text-gray-500 font-medium uppercase">Total Omset (Kotor)</p>
-            <p class="text-lg font-bold text-[#1B4D3E] mt-1"><?= formatRupiah((int)$kpi['total_revenue']) ?></p>
-            <p class="text-xs text-gray-500 mt-1"><?= (int)$kpi['total_orders'] ?> pesanan selesai/diproses</p>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <p class="text-xs text-gray-500 font-medium uppercase">Laba Kotor</p>
-            <p class="text-lg font-bold text-blue-600 mt-1"><?= formatRupiah((int)$kpi['total_gross_profit']) ?></p>
-            <p class="text-xs text-gray-500 mt-1">HPP: <?= formatRupiah((int)$kpi['total_cost']) ?></p>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <p class="text-xs text-gray-500 font-medium uppercase">Laba Bersih (Alokasi Pool)</p>
-            <p class="text-lg font-bold text-green-600 mt-1"><?= formatRupiah((int)$kpi['total_net_profit']) ?></p>
-            <p class="text-xs text-gray-500 mt-1">Rata-rata durasi: <?= round((float)($kpi['avg_duration'] ?? 0)) ?> dtk</p>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <p class="text-xs text-gray-500 font-medium uppercase">Saldo Kas Bersih</p>
-            <p class="text-lg font-bold text-gray-900 mt-1"><?= formatRupiah((int)$poolData['net_cash_balance']) ?></p>
-            <p class="text-xs text-gray-500 mt-1">Omset + Pemasukan - Pengeluaran</p>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <p class="text-xs text-gray-500 font-medium uppercase">Pemasukan Manual</p>
-            <p class="text-lg font-bold text-indigo-600 mt-1"><?= formatRupiah((int)$poolData['total_manual_income']) ?></p>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
-            <p class="text-xs text-gray-500 font-medium uppercase">Total Pengeluaran</p>
-            <p class="text-lg font-bold text-red-600 mt-1"><?= formatRupiah((int)$poolData['total_expenses']) ?></p>
-        </div>
-        <div class="bg-white p-4 rounded-lg shadow-sm border border-gray-200 sm:col-span-2">
-            <p class="text-xs text-gray-500 font-medium uppercase">Info Pesanan Dibatalkan (Void - Dikecualikan dari Total)</p>
-            <p class="text-lg font-bold text-amber-700 mt-1">
-                <?= (int)$voidInfo['void_count'] ?> Pesanan (<?= formatRupiah((int)$voidInfo['void_value']) ?>)
-            </p>
+        <div class="flex flex-wrap items-center gap-2 print:hidden">
+            <form method="GET" class="flex flex-wrap items-center gap-2 bg-white p-2 rounded-2xl border border-[#E6E4DD] shadow-sm">
+                <input type="hidden" name="sort" value="<?= e($sort) ?>">
+                <input type="hidden" name="dir" value="<?= e($dir) ?>">
+                <span class="text-xs font-bold text-gray-500 pl-2">Periode:</span>
+                <input type="date" name="from" value="<?= e($fromDate) ?>" class="bg-[#F8F7F4] border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold">
+                <span class="text-xs text-gray-400">s/d</span>
+                <input type="date" name="to" value="<?= e($toDate) ?>" class="bg-[#F8F7F4] border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold">
+                <button type="submit" class="bg-[#9E3B1B] hover:bg-[#822F14] text-white px-4 py-1.5 rounded-xl text-xs font-extrabold transition">
+                    Tampilkan
+                </button>
+            </form>
+            <a href="export_csv.php?<?= e(http_build_query(['report' => 'summary', 'from' => $fromDate, 'to' => $toDate, 'sort' => $sort, 'dir' => $dir])) ?>"
+               class="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3.5 py-2.5 rounded-xl text-xs font-bold shadow-sm">
+                &darr; Ekspor CSV
+            </a>
+            <button type="button" onclick="window.print()"
+               class="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3.5 py-2.5 rounded-xl text-xs font-bold shadow-sm">
+                &#128424; Cetak/PDF
+            </button>
         </div>
     </div>
 
-    <!-- Tabel Keseimbangan 3 Pos Dana (3-Pool Balance) & Metode Pembayaran -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div class="p-4 border-b border-gray-200 flex justify-between items-center">
-                <h2 class="font-semibold text-gray-800">Keseimbangan Saldo per Pos Dana (3-Pool)</h2>
-                <?php if ($poolData['reconciled']): ?>
-                    <span class="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-1 rounded">Saldo sesuai</span>
-                <?php else: ?>
-                    <span class="bg-red-100 text-red-800 text-xs font-semibold px-2.5 py-1 rounded">
-                        Selisih: <?= formatRupiah((int)$poolData['difference']) ?>
-                    </span>
-                <?php endif; ?>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-sm">
-                    <thead>
-                        <tr class="bg-gray-50 border-b border-gray-200 text-gray-600">
-                            <th class="p-3">Pos Dana</th>
-                            <th class="p-3 text-right">Alokasi Penjualan</th>
-                            <th class="p-3 text-right">Pemasukan Manual</th>
-                            <th class="p-3 text-right">Pengeluaran</th>
-                            <th class="p-3 text-right">Saldo Bersih Pool</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        <?php foreach ($poolData['pools'] as $p): ?>
-                            <tr class="hover:bg-gray-50">
-                                <td class="p-3 font-medium text-gray-800"><?= e($p['label']) ?></td>
-                                <td class="p-3 text-right"><?= formatRupiah($p['allocated']) ?></td>
-                                <td class="p-3 text-right text-green-600">+<?= formatRupiah($p['manual_income']) ?></td>
-                                <td class="p-3 text-right text-red-600">-<?= formatRupiah($p['expenses']) ?></td>
-                                <td class="p-3 text-right font-bold text-gray-900"><?= formatRupiah($p['net_balance']) ?></td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                    <tfoot>
-                        <tr class="bg-gray-50 border-t-2 border-gray-200 font-bold">
-                            <td class="p-3">TOTAL KESELURUHAN POOL</td>
-                            <td class="p-3 text-right"><?= formatRupiah((int)$kpi['total_revenue']) ?></td>
-                            <td class="p-3 text-right text-green-700">+<?= formatRupiah($poolData['total_manual_income']) ?></td>
-                            <td class="p-3 text-right text-red-700">-<?= formatRupiah($poolData['total_expenses']) ?></td>
-                            <td class="p-3 text-right text-[#1B4D3E]"><?= formatRupiah($poolData['sum_pool_net']) ?></td>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
+    <!-- 6 Executive KPI Cards (Figma Slide 13) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E4DD]">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total Omset</span>
+            <p class="text-xl font-extrabold text-[#1E293B] mt-1"><?= formatRupiah($rev) ?></p>
+            <p class="text-[11px] text-gray-500 mt-1"><?= (int)$kpi['total_orders'] ?> Pesanan Sah</p>
         </div>
 
-        <!-- Rincian Metode Pembayaran -->
-        <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div class="p-4 border-b border-gray-200">
-                <h2 class="font-semibold text-gray-800">Omset per Metode Pembayaran</h2>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left border-collapse text-sm">
-                    <thead>
-                        <tr class="bg-gray-50 border-b border-gray-200 text-gray-600">
-                            <th class="p-3">Metode</th>
-                            <th class="p-3 text-center">Pesanan</th>
-                            <th class="p-3 text-right">Total</th>
-                            <th class="p-3 text-right">%</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-gray-100">
-                        <?php foreach ($methodData as $m): ?>
-                            <tr class="hover:bg-gray-50">
-                                <td class="p-3 font-medium"><?= e($m['label']) ?></td>
-                                <td class="p-3 text-center"><?= $m['orders_count'] ?></td>
-                                <td class="p-3 text-right font-semibold"><?= formatRupiah($m['amount']) ?></td>
-                                <td class="p-3 text-right text-gray-600"><?= number_format($m['percentage'], 1, ',', '.') ?>%</td>
-                            </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E4DD]">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total Laba Kotor</span>
+            <p class="text-xl font-extrabold text-[#1B4D3E] mt-1"><?= formatRupiah($gp) ?></p>
+            <p class="text-[11px] text-emerald-700 font-medium mt-1">Marjin Kotor <?= number_format($gpMargin, 1, ',', '.') ?>%</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E4DD]">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total Laba Bersih</span>
+            <p class="text-xl font-extrabold text-[#1B4D3E] mt-1"><?= formatRupiah($np) ?></p>
+            <p class="text-[11px] text-emerald-700 font-medium mt-1">Marjin Bersih <?= number_format($npMargin, 1, ',', '.') ?>%</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E4DD]">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Total Pengeluaran</span>
+            <p class="text-xl font-extrabold text-[#9E3B1B] mt-1"><?= formatRupiah((int)$poolData['total_expenses']) ?></p>
+            <p class="text-[11px] text-gray-500 mt-1">Pemasukan Manual: +<?= formatRupiah((int)$poolData['total_manual_income']) ?></p>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E4DD]">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Saldo Kas Bersih</span>
+            <p class="text-xl font-extrabold text-[#1E293B] mt-1"><?= formatRupiah((int)$poolData['net_cash_balance']) ?></p>
+            <p class="text-[11px] text-gray-500 mt-1">Fisik Kasir &amp; Bank</p>
+        </div>
+
+        <div class="bg-white p-4 rounded-2xl shadow-sm border border-[#E6E4DD]">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-gray-400">Status Pembatalan</span>
+            <p class="text-xl font-extrabold text-amber-800 mt-1"><?= (int)$voidInfo['void_count'] ?> Dibatalkan</p>
+            <p class="text-[11px] text-red-600 font-medium mt-1"><?= formatRupiah((int)$voidInfo['void_value']) ?> (Voided)</p>
         </div>
     </div>
 
-    <!-- Tabel Rincian Harian -->
-    <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-        <div class="p-4 border-b border-gray-200 flex flex-wrap justify-between items-center gap-2">
-            <h2 class="font-semibold text-gray-800">Rincian Penjualan Harian</h2>
-            <div class="flex items-center gap-2">
-                <a href="export_csv.php?<?= e(http_build_query(['report' => 'summary', 'from' => $fromDate, 'to' => $toDate, 'sort' => $sort, 'dir' => $dir])) ?>" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-xs font-medium">Ekspor CSV (Koma)</a>
-                <a href="export_csv.php?<?= e(http_build_query(['report' => 'summary', 'from' => $fromDate, 'to' => $toDate, 'sort' => $sort, 'dir' => $dir, 'delimiter' => 'semicolon'])) ?>" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-xs font-medium">Ekspor CSV (Titik Koma)</a>
-                <button type="button" onclick="window.print()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded text-xs font-medium">Cetak/PDF</button>
+    <!-- Operational Metrics Summary Strip -->
+    <div class="bg-white rounded-2xl shadow-sm border border-[#E6E4DD] p-4 flex flex-wrap items-center justify-between gap-4 text-xs">
+        <div class="flex flex-wrap items-center gap-4">
+            <span class="font-extrabold uppercase tracking-wider text-gray-500">Ringkasan Metrik Operasional:</span>
+            <span>Volume: <strong><?= (int)$kpi['total_orders'] ?> Pesanan</strong></span>
+            <span>&bull;</span>
+            <span>Rata-rata Durasi Saji: <strong><?= round((float)($kpi['avg_duration'] ?? 0)) ?> dtk</strong></span>
+        </div>
+        <div class="flex flex-wrap items-center gap-4 font-bold">
+            <span class="bg-emerald-50 text-[#1B4D3E] px-3 py-1 rounded-full">
+                Tunai: <?= formatRupiah($methodData['cash']['amount']) ?> (<?= number_format($methodData['cash']['percentage'], 1, ',', '.') ?>%)
+            </span>
+            <span class="bg-orange-50 text-[#9E3B1B] px-3 py-1 rounded-full">
+                QRIS: <?= formatRupiah($methodData['qris']['amount']) ?> (<?= number_format($methodData['qris']['percentage'], 1, ',', '.') ?>%)
+            </span>
+        </div>
+    </div>
+
+    <!-- 3-Pool Balance Sheet Table -->
+    <div class="bg-white rounded-2xl shadow-sm border border-[#E6E4DD] overflow-hidden">
+        <div class="p-5 border-b border-gray-100 flex justify-between items-center">
+            <div>
+                <h2 class="font-extrabold text-base text-[#1E293B] uppercase">NERACA SALDO PER POS DANA (3-POOL)</h2>
+                <p class="text-xs text-gray-400">Rekonsiliasi alokasi otomatis penjualan dan mutasi buku kas manual</p>
+            </div>
+            <?php if ($poolData['reconciled']): ?>
+                <span class="bg-emerald-100 text-[#1B4D3E] text-xs font-extrabold px-3 py-1 rounded-full">&#10004; Saldo sesuai</span>
+            <?php else: ?>
+                <span class="bg-red-100 text-red-800 text-xs font-extrabold px-3 py-1 rounded-full">
+                    Selisih: <?= formatRupiah((int)$poolData['difference']) ?>
+                </span>
+            <?php endif; ?>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-[#F8F7F4] border-b border-gray-200 text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        <th class="p-3.5">Pos Dana</th>
+                        <th class="p-3.5 text-right">Alokasi Penjualan</th>
+                        <th class="p-3.5 text-right">Pemasukan Manual</th>
+                        <th class="p-3.5 text-right">Pengeluaran Manual</th>
+                        <th class="p-3.5 text-right">Saldo Akhir Pos</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <?php foreach ($poolData['pools'] as $p): ?>
+                        <tr class="hover:bg-[#F8F7F4]/60">
+                            <td class="p-3.5 font-extrabold text-[#1E293B]"><?= e($p['label']) ?></td>
+                            <td class="p-3.5 text-right font-semibold"><?= formatRupiah($p['allocated']) ?></td>
+                            <td class="p-3.5 text-right text-emerald-700 font-semibold">+<?= formatRupiah($p['manual_income']) ?></td>
+                            <td class="p-3.5 text-right text-red-600 font-semibold">-<?= formatRupiah($p['expenses']) ?></td>
+                            <td class="p-3.5 text-right font-extrabold text-[#1B4D3E]"><?= formatRupiah($p['net_balance']) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+                <tfoot>
+                    <tr class="bg-[#F8F7F4] border-t-2 border-[#E6E4DD] font-extrabold">
+                        <td class="p-3.5">Total Rekonsiliasi</td>
+                        <td class="p-3.5 text-right"><?= formatRupiah($rev) ?></td>
+                        <td class="p-3.5 text-right text-emerald-700">+<?= formatRupiah($poolData['total_manual_income']) ?></td>
+                        <td class="p-3.5 text-right text-red-700">-<?= formatRupiah($poolData['total_expenses']) ?></td>
+                        <td class="p-3.5 text-right text-lg text-[#1B4D3E]"><?= formatRupiah($poolData['sum_pool_net']) ?></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Daily Breakdown Table -->
+    <div class="bg-white rounded-2xl shadow-sm border border-[#E6E4DD] overflow-hidden">
+        <div class="p-5 border-b border-gray-100 flex flex-wrap justify-between items-center gap-2">
+            <div>
+                <h2 class="font-extrabold text-base text-[#1E293B] uppercase">RINCIAN HARIAN</h2>
+                <p class="text-xs text-gray-400">Klik judul kolom untuk menyortir urutan</p>
             </div>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-left border-collapse text-sm">
                 <thead>
-                    <tr class="bg-gray-50 border-b border-gray-200 text-gray-600">
+                    <tr class="bg-[#F8F7F4] border-b border-gray-200 text-[11px] font-bold uppercase tracking-wider text-gray-500">
                         <?= sortLinkReport('order_date', 'Tanggal', $sort, $dir, $fromDate, $toDate, 'left') ?>
-                        <?= sortLinkReport('orders_count', 'Jml Pesanan', $sort, $dir, $fromDate, $toDate, 'center') ?>
-                        <?= sortLinkReport('revenue', 'Omset (Kotor)', $sort, $dir, $fromDate, $toDate, 'right') ?>
+                        <?= sortLinkReport('orders_count', 'Pesanan', $sort, $dir, $fromDate, $toDate, 'center') ?>
+                        <?= sortLinkReport('revenue', 'Omset Kotor', $sort, $dir, $fromDate, $toDate, 'right') ?>
                         <?= sortLinkReport('cost', 'Total HPP', $sort, $dir, $fromDate, $toDate, 'right') ?>
                         <?= sortLinkReport('gross_profit', 'Laba Kotor', $sort, $dir, $fromDate, $toDate, 'right') ?>
                         <?= sortLinkReport('net_profit', 'Laba Bersih', $sort, $dir, $fromDate, $toDate, 'right') ?>
@@ -193,16 +199,21 @@ include __DIR__ . '/includes/layout_header.php';
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     <?php if (empty($dailyRows)): ?>
-                        <tr><td colspan="7" class="p-4 text-center text-gray-500">Tidak ada data penjualan pada periode ini.</td></tr>
+                        <tr><td colspan="7" class="p-8 text-center text-gray-400">Tidak ada data penjualan pada periode ini.</td></tr>
                     <?php else: foreach ($dailyRows as $row): ?>
-                        <tr class="hover:bg-gray-50">
-                            <td class="p-3 font-medium"><?= e($row['order_date']) ?></td>
-                            <td class="p-3 text-center"><?= (int)$row['orders_count'] ?></td>
-                            <td class="p-3 text-right"><?= formatRupiah((int)$row['revenue']) ?></td>
-                            <td class="p-3 text-right"><?= formatRupiah((int)$row['cost']) ?></td>
-                            <td class="p-3 text-right"><?= formatRupiah((int)$row['gross_profit']) ?></td>
-                            <td class="p-3 text-right"><?= formatRupiah((int)$row['net_profit']) ?></td>
-                            <td class="p-3 text-center"><?= round((float)($row['avg_duration'] ?? 0)) ?> detik</td>
+                        <tr class="hover:bg-[#F8F7F4]/60">
+                            <td class="p-3.5 font-extrabold text-[#1E293B]">
+                                <?= e(date('d/m/Y', strtotime($row['order_date']))) ?>
+                                <?php if ($row['order_date'] === date('Y-m-d')): ?>
+                                    <span class="ml-1.5 text-[10px] bg-emerald-100 text-[#1B4D3E] px-2 py-0.5 rounded-full font-bold">Hari Ini</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="p-3.5 text-center font-bold"><?= (int)$row['orders_count'] ?></td>
+                            <td class="p-3.5 text-right font-bold text-[#1E293B]"><?= formatRupiah((int)$row['revenue']) ?></td>
+                            <td class="p-3.5 text-right text-gray-500"><?= formatRupiah((int)$row['cost']) ?></td>
+                            <td class="p-3.5 text-right font-bold text-[#1B4D3E]"><?= formatRupiah((int)$row['gross_profit']) ?></td>
+                            <td class="p-3.5 text-right font-extrabold text-emerald-700"><?= formatRupiah((int)$row['net_profit']) ?></td>
+                            <td class="p-3.5 text-center text-xs text-gray-500"><?= round((float)($row['avg_duration'] ?? 0)) ?> dtk</td>
                         </tr>
                     <?php endforeach; endif; ?>
                 </tbody>

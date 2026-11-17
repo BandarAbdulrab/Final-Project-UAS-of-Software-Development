@@ -3,6 +3,7 @@ if (!isset($pageTitle)) { $pageTitle = 'Kedai Paradise POS'; }
 $role = $_SESSION['role'] ?? '';
 $name = $_SESSION['name'] ?? 'Staff';
 $currentFile = basename($_SERVER['PHP_SELF']);
+$dbMode = function_exists('getActiveDbMode') ? getActiveDbMode() : 'live';
 
 // Inject JS translation strings (only keys starting with js_)
 $jsLangs = [];
@@ -11,6 +12,14 @@ foreach ($allLangs as $k => $v) {
     if (str_starts_with($k, 'js_')) {
         $jsLangs[$k] = $v;
     }
+}
+
+// Fetch active queue badge count for navbar
+$navQueueCount = 0;
+try {
+    $navQueueCount = (int)db()->query("SELECT COUNT(*) FROM transactions WHERE status = 'processing'")->fetchColumn();
+} catch (Throwable $e) {
+    $navQueueCount = 0;
 }
 
 $navAdmin = [
@@ -47,28 +56,73 @@ if (!empty($_GET['from']) || !empty($_GET['to'])) {
         window.I18N = <?= json_encode($jsLangs) ?>;
     </script>
 </head>
-<body class="bg-gray-50 text-[#2C3E50] font-sans antialiased min-h-screen flex flex-col">
-    <!-- Navbar (hidden when printing) -->
-    <nav class="bg-[#1B4D3E] text-white shadow-md print:hidden">
+<body class="bg-[#F8F7F4] text-[#1E293B] font-sans antialiased min-h-screen flex flex-col">
+    <!-- Top Navbar matching Figma -->
+    <nav class="bg-[#1B4D3E] text-white shadow-md border-b border-white/10 print:hidden">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex flex-wrap items-center justify-between min-h-[4rem] py-2 gap-2">
-                <div class="flex items-center gap-4 flex-wrap">
-                    <a href="dashboard.php" class="font-bold text-base sm:text-lg tracking-wider whitespace-nowrap">KEDAI PARADISE</a>
-                    <div class="hidden lg:flex items-center flex-wrap gap-1 text-xs font-medium">
-                        <?php foreach ($navItems as [$file, $key]): ?>
-                            <a href="<?= e($file) ?>" class="px-2.5 py-1.5 rounded whitespace-nowrap transition hover:bg-[#153d31] <?= $currentFile === $file ? 'bg-[#153d31] font-semibold ring-1 ring-white/20' : 'text-white/90' ?>"><?= e(t($key)) ?></a>
+            <div class="flex flex-wrap items-center justify-between min-h-[4.25rem] py-2 gap-3">
+                <!-- Brand & Nav Links -->
+                <div class="flex items-center gap-5 flex-wrap">
+                    <a href="dashboard.php" class="flex items-center gap-2.5 group">
+                        <span class="w-9 h-9 rounded-lg bg-white/15 flex items-center justify-center text-white font-bold text-sm shadow-inner group-hover:bg-white/20 transition">
+                            &#127860;
+                        </span>
+                        <div class="leading-tight">
+                            <div class="font-extrabold text-sm sm:text-base tracking-wider text-white flex items-center gap-2">
+                                KEDAI PARADISE
+                                <?php if ($dbMode === 'test'): ?>
+                                    <span class="bg-amber-400 text-amber-950 text-[10px] font-extrabold px-2 py-0.5 rounded uppercase tracking-normal">DEMO DB</span>
+                                <?php endif; ?>
+                            </div>
+                            <div class="text-[10px] tracking-widest uppercase text-emerald-200/90 font-medium">Kandang Gampang, Purbalingga</div>
+                        </div>
+                    </a>
+
+                    <div class="hidden xl:flex items-center flex-wrap gap-1 text-xs font-medium">
+                        <?php foreach ($navItems as [$file, $key]):
+                            $isActive = ($currentFile === $file);
+                        ?>
+                            <a href="<?= e($file) ?>" class="px-2.5 py-1.5 rounded-lg whitespace-nowrap transition flex items-center gap-1.5 <?= $isActive ? 'bg-white/15 text-white font-semibold shadow-sm ring-1 ring-white/25' : 'text-emerald-50/85 hover:bg-white/10 hover:text-white' ?>">
+                                <span><?= e(t($key)) ?></span>
+                                <?php if ($file === 'queue.php' && $navQueueCount > 0): ?>
+                                    <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.2 rounded-full leading-tight"><?= $navQueueCount ?></span>
+                                <?php endif; ?>
+                            </a>
                         <?php endforeach; ?>
                     </div>
                 </div>
-                <div class="flex items-center space-x-3 ml-auto">
-                    <a href="account.php" class="text-xs sm:text-sm font-medium hover:underline whitespace-nowrap"><?= e($name) ?> (<?= e(t('role_' . $role)) ?>)</a>
-                    <a href="logout.php" class="bg-red-600 hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded transition whitespace-nowrap"><?= e(t('js_logout')) ?></a>
-                    <button type="button" id="navToggle" class="lg:hidden p-2 rounded hover:bg-[#153d31]" aria-label="Menu" aria-expanded="false">&#9776;</button>
+
+                <!-- Right Status, User Profile & Logout -->
+                <div class="flex items-center gap-3 ml-auto">
+                    <div class="hidden md:flex items-center gap-2 text-[11px] text-emerald-100/90 bg-black/15 px-3 py-1.5 rounded-full border border-white/10">
+                        <span id="liveWibClock"><?= e(date('d/m/Y H:i:s')) ?> WIB</span>
+                        <span class="text-emerald-400 font-bold">&bull; Online</span>
+                    </div>
+
+                    <a href="account.php" class="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg transition border border-white/10">
+                        <span class="text-xs font-semibold text-white whitespace-nowrap"><?= e($name) ?></span>
+                        <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded <?= $role === 'admin' ? 'bg-emerald-950/70 text-emerald-200' : 'bg-amber-400/20 text-amber-200' ?>">
+                            <?= e(t('role_' . $role)) ?>
+                        </span>
+                    </a>
+
+                    <a href="logout.php" class="bg-[#9E3B1B] hover:bg-[#822F14] text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-sm transition whitespace-nowrap">
+                        &rarr; <?= e(t('js_logout')) ?>
+                    </a>
+
+                    <button type="button" id="navToggle" class="xl:hidden p-2 rounded-lg hover:bg-white/10 text-white" aria-label="Menu" aria-expanded="false">&#9776;</button>
                 </div>
             </div>
-            <div id="mobileNav" class="hidden lg:hidden pb-3 pt-1 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 gap-1 text-xs">
+
+            <!-- Mobile / Tablet Collapsible Nav -->
+            <div id="mobileNav" class="hidden xl:hidden pb-3 pt-2 border-t border-white/10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1.5 text-xs">
                 <?php foreach ($navItems as [$file, $key]): ?>
-                    <a href="<?= e($file) ?>" class="px-3 py-2 rounded hover:bg-[#153d31] <?= $currentFile === $file ? 'bg-[#153d31] font-semibold' : '' ?>"><?= e(t($key)) ?></a>
+                    <a href="<?= e($file) ?>" class="px-3 py-2 rounded-lg flex items-center justify-between hover:bg-white/10 <?= $currentFile === $file ? 'bg-white/15 font-semibold' : '' ?>">
+                        <span><?= e(t($key)) ?></span>
+                        <?php if ($file === 'queue.php' && $navQueueCount > 0): ?>
+                            <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full"><?= $navQueueCount ?></span>
+                        <?php endif; ?>
+                    </a>
                 <?php endforeach; ?>
             </div>
         </div>
@@ -79,11 +133,24 @@ if (!empty($_GET['from']) || !empty($_GET['to'])) {
             m.classList.toggle('hidden');
             this.setAttribute('aria-expanded', m.classList.contains('hidden') ? 'false' : 'true');
         });
+        // Live WIB Clock
+        setInterval(function () {
+            var el = document.getElementById('liveWibClock');
+            if (!el) return;
+            var now = new Date();
+            var fmt = new Intl.DateTimeFormat('id-ID', {
+                timeZone: 'Asia/Jakarta',
+                day: '2-digit', month: '2-digit', year: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: false
+            }).format(now).replace(/\./g, ':').replace(',', '');
+            el.textContent = fmt + ' WIB';
+        }, 1000);
     </script>
 
     <!-- Main Content Container -->
     <main class="flex-grow max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-        <!-- Print-Only Header (strictly hidden on screen, visible only on paper/PDF) -->
+        <!-- Print-Only Header -->
         <div class="print-header hidden print:block">
             <h1><?= e($settings['business_name'] ?? 'Kedai Paradise') ?></h1>
             <h2><?= e($pageTitle ?? 'Laporan') ?></h2>

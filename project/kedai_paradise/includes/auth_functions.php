@@ -37,6 +37,12 @@ function isLoginRateLimited(PDO $pdo, string $username, string $ip): bool
     return (int)$stmt->fetchColumn() >= LOGIN_MAX_FAILURES;
 }
 
+/** Alias required by Day 9 QA test suite (TC-D27). */
+function isLoginLocked(PDO $pdo, string $username, string $ip = '127.0.0.1'): bool
+{
+    return isLoginRateLimited($pdo, $username, $ip);
+}
+
 function recordFailedLogin(PDO $pdo, string $username, string $ip): void
 {
     $stmt = $pdo->prepare('INSERT INTO login_attempts (username, ip_address) VALUES (:u, :ip)');

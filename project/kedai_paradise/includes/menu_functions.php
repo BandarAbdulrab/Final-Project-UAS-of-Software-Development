@@ -12,7 +12,7 @@ const MAX_MODIFIER_ITEMS_PER_GROUP = 10;
  * Enforces max 5 groups per menu item (BR-16, TC-D09).
  * Accepts either ($pdo, $menuId, $name, $type, $isRequired) or ($menuId, $name, $type, $isRequired) or ($arrayData).
  */
-function createModifierGroup($arg1, $arg2 = null, string $arg3 = 'single', int $arg4 = 0, int $arg5 = 0): int
+function createModifierGroup($arg1, $arg2 = null, $arg3 = 'single', $arg4 = 0, $arg5 = 0): int
 {
     if ($arg1 instanceof PDO) {
         $pdo = $arg1;
@@ -37,7 +37,7 @@ function createModifierGroup($arg1, $arg2 = null, string $arg3 = 'single', int $
         $pdo = db();
         $menuId = (int)$arg1;
         $name = trim((string)$arg2);
-        $type = in_array($arg3, ['single', 'multiple'], true) ? $arg3 : 'single';
+        $type = in_array((string)$arg3, ['single', 'multiple'], true) ? (string)$arg3 : 'single';
         $isRequired = $arg4 ? 1 : 0;
     }
 

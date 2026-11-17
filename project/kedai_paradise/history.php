@@ -1,6 +1,6 @@
 <?php
 /**
- * Cashier & Admin Transaction History Ledger (SRS-F09, BR-12, BR-25)
+ * Cashier & Admin Transaction History Ledger (SRS-F09, BR-12, BR-23, BR-24, BR-25) - Figma Slides 2, 5, 6
  * Kedai Paradise POS
  */
 require_once __DIR__ . '/includes/bootstrap.php';
@@ -9,7 +9,6 @@ require_once __DIR__ . '/auth_check.php';
 $isAdmin = ($_SESSION['role'] ?? '') === 'admin';
 $pdo = db();
 
-// Filters & Pagination
 $fromDate = trim((string)($_GET['from'] ?? ($isAdmin ? date('Y-m-01') : date('Y-m-d'))));
 $toDate = trim((string)($_GET['to'] ?? date('Y-m-d')));
 if (!$isAdmin) {
@@ -23,18 +22,30 @@ $page = max(1, (int)($_GET['page'] ?? 1));
 $limit = 50;
 $offset = ($page - 1) * $limit;
 
-// Whitelist sorting
-$allowedSort = ['order_no', 'date', 'table_no', 'method', 'total', 'status', 'duration_seconds'];
+$sortMap = [
+    'order_no'         => 't.order_no',
+    'date'             => 't.date',
+    'table_no'         => 't.table_no',
+    'method'           => 't.method',
+    'total'            => 't.total',
+    'status'           => 't.status',
+    'duration_seconds' => 't.duration_seconds',
+];
 if ($isAdmin) {
-    $allowedSort = array_merge($allowedSort, ['total_cost', 'gross_profit', 'alloc_profit', 'cashier_name']);
+    $sortMap['total_cost']   = 't.total_cost';
+    $sortMap['gross_profit'] = 't.gross_profit';
+    $sortMap['alloc_profit'] = 't.alloc_profit';
+    $sortMap['cashier']      = 'u.name';
 }
+
 $sort = trim((string)($_GET['sort'] ?? 'date'));
-if (!in_array($sort, $allowedSort, true)) {
+if (!array_key_exists($sort, $sortMap)) {
     $sort = 'date';
 }
-$dir = strtolower(trim((string)($_GET['dir'] ?? 'desc'))) === 'asc' ? 'ASC' : 'DESC';
+$orderBySql = $sortMap[$sort];
+$dir = strtolower(trim((string)($_GET['dir'] ?? 'desc'))) === 'asc' ? 'asc' : 'desc';
+$dirSql = strtoupper($dir);
 
-// Build SQL query
 $where = ['1=1'];
 $params = [];
 
@@ -58,28 +69,30 @@ if ($methodFilter !== 'all' && in_array($methodFilter, ['cash', 'qris'], true)) 
 
 $whereSql = implode(' AND ', $where);
 
-// Count total rows
 $stmtCount = $pdo->prepare("SELECT COUNT(*) FROM transactions t WHERE $whereSql");
 $stmtCount->execute($params);
 $totalRows = (int)$stmtCount->fetchColumn();
-$totalPages = ceil($totalRows / $limit);
+$totalPages = max(1, (int)ceil($totalRows / $limit));
 
-// Fetch summary totals (excluding voids per SALES_FILTER)
 $stmtSum = $pdo->prepare(
-    "SELECT COUNT(*) AS total_count, SUM(t.total) AS total_revenue 
+    "SELECT 
+        COALESCE(SUM(CASE WHEN t.status <> 'void' THEN 1 ELSE 0 END), 0) AS valid_count,
+        COALESCE(SUM(CASE WHEN t.status = 'void' THEN 1 ELSE 0 END), 0) AS void_count,
+        COALESCE(SUM(CASE WHEN t.status <> 'void' THEN t.total ELSE 0 END), 0) AS total_revenue,
+        COALESCE(SUM(CASE WHEN t.status <> 'void' THEN t.total_cost ELSE 0 END), 0) AS total_cost,
+        COALESCE(SUM(CASE WHEN t.status <> 'void' THEN t.gross_profit ELSE 0 END), 0) AS total_gross_profit
      FROM transactions t 
-     WHERE $whereSql AND t.status <> 'void'"
+     WHERE $whereSql"
 );
 $stmtSum->execute($params);
 $summary = $stmtSum->fetch();
 
-// Fetch paginated transactions
-$sql = "SELECT t.*, u.name AS cashier_name, ub.name AS voided_by_name 
+$sql = "SELECT t.*, u.name AS cashier_name, ub.username AS voided_by_user, ub.name AS voided_by_name 
         FROM transactions t 
         LEFT JOIN users u ON u.user_id = t.user_id 
         LEFT JOIN users ub ON ub.user_id = t.voided_by 
         WHERE $whereSql 
-        ORDER BY t.$sort $dir, t.transaction_id DESC 
+        ORDER BY $orderBySql $dirSql, t.transaction_id DESC 
         LIMIT :limit OFFSET :offset";
 
 $stmtTx = $pdo->prepare($sql);
@@ -91,10 +104,10 @@ $stmtTx->bindValue(':offset', $offset, PDO::PARAM_INT);
 $stmtTx->execute();
 $transactions = $stmtTx->fetchAll();
 
-// Fetch orders and items for these transactions
 $txIds = array_column($transactions, 'transaction_id');
 $ordersByTx = [];
 $modsByOrder = [];
+$orderIds = [];
 
 if (!empty($txIds)) {
     $in = implode(',', array_fill(0, count($txIds), '?'));
@@ -115,193 +128,344 @@ if (!empty($txIds)) {
     }
 }
 
-$pageTitle = 'Riwayat Transaksi';
+$baseQuery = [
+    'from'   => $fromDate,
+    'to'     => $toDate,
+    'status' => $statusFilter === 'all' ? '' : $statusFilter,
+    'method' => $methodFilter === 'all' ? '' : $methodFilter,
+];
+
+function sortThHistory(string $col, string $label, string $currentSort, string $currentDir, array $baseParams, string $align = 'left'): string {
+    $nextDir = ($currentSort === $col && $currentDir === 'asc') ? 'desc' : 'asc';
+    $indicator = $currentSort === $col ? ($currentDir === 'asc' ? ' &#9650;' : ' &#9660;') : ' &#8693;';
+    $q = array_merge($baseParams, ['sort' => $col, 'dir' => $nextDir]);
+    $alignCls = $align === 'right' ? 'text-right' : ($align === 'center' ? 'text-center' : 'text-left');
+    return '<th class="py-3.5 px-4 ' . $alignCls . '"><a href="history.php?' . e(http_build_query($q)) . '" class="hover:text-[#1B4D3E] whitespace-nowrap">' . e($label) . '<span class="text-[10px] text-gray-400">' . $indicator . '</span></a></th>';
+}
+
+$csvQueryBase = http_build_query(array_merge($baseQuery, ['report' => 'history', 'sort' => $sort, 'dir' => $dir]));
+
+$pageTitle = 'Riwayat Transaksi Penjualan - Kedai Paradise';
 include __DIR__ . '/includes/layout_header.php';
 ?>
 
-<div class="max-w-7xl mx-auto px-4 py-6 space-y-6">
+<div class="space-y-5">
+    <!-- Header -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-[#2C3E50]">Riwayat Transaksi</h1>
-            <p class="text-sm text-gray-600">Catatan pesanan, cetak ulang struk, dan audit pembatalan.</p>
+            <span class="text-xs font-bold uppercase tracking-wider text-[#1B4D3E]">Laporan Penjualan</span>
+            <h1 class="text-2xl font-extrabold text-[#1E293B] uppercase">RIWAYAT TRANSAKSI PENJUALAN</h1>
+            <?php if (!$isAdmin): ?>
+                <p class="text-xs text-gray-500">Daftar penjualan hari ini (<?= date('d/m/Y') ?>)</p>
+            <?php endif; ?>
         </div>
-        <div class="flex items-center gap-2">
-            <a href="export_csv.php?report=history&from=<?= e($fromDate) ?>&to=<?= e($toDate) ?>&status=<?= e($statusFilter) ?>&method=<?= e($methodFilter) ?>"
-               class="bg-emerald-700 hover:bg-emerald-800 text-white px-3.5 py-2 rounded-lg text-xs font-semibold transition">
-                Ekspor CSV
+        <div class="flex flex-wrap items-center gap-2 print:hidden">
+            <a href="export_csv.php?<?= e($csvQueryBase) ?>&mode=summary"
+               class="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm">
+                &darr; Ekspor CSV (Ringkasan)
             </a>
+            <a href="export_csv.php?<?= e($csvQueryBase) ?>&mode=lines"
+               class="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm">
+                &darr; CSV (Rincian Item)
+            </a>
+            <button type="button" onclick="window.print()"
+               class="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-3.5 py-2 rounded-xl text-xs font-bold transition shadow-sm">
+                &#128424; Cetak / PDF
+            </button>
         </div>
     </div>
 
-    <!-- Filters Bar -->
-    <form method="get" class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
+    <!-- Filters Bar (Figma Slide 5) -->
+    <form method="get" class="bg-white rounded-2xl shadow-sm border border-[#E6E4DD] p-4 flex flex-wrap items-end gap-3 print:hidden">
+        <input type="hidden" name="sort" value="<?= e($sort) ?>">
+        <input type="hidden" name="dir" value="<?= e($dir) ?>">
+
         <?php if ($isAdmin): ?>
         <div>
-            <label class="block text-xs font-semibold text-gray-700 mb-1">Dari Tanggal</label>
-            <input type="date" name="from" value="<?= e($fromDate) ?>" class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Periode Tanggal</label>
+            <div class="flex items-center gap-2">
+                <input type="date" name="from" value="<?= e($fromDate) ?>" class="bg-[#F8F7F4] border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold">
+                <span class="text-xs text-gray-400">s/d</span>
+                <input type="date" name="to" value="<?= e($toDate) ?>" class="bg-[#F8F7F4] border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold">
+            </div>
         </div>
+        <?php else: ?>
         <div>
-            <label class="block text-xs font-semibold text-gray-700 mb-1">Sampai Tanggal</label>
-            <input type="date" name="to" value="<?= e($toDate) ?>" class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Periode Shift</label>
+            <div class="bg-[#F8F7F4] border border-gray-200 rounded-xl px-3.5 py-2 text-xs font-bold text-gray-600">
+                <?= date('d/m/Y') ?> s/d <?= date('d/m/Y') ?>
+            </div>
         </div>
         <?php endif; ?>
+
         <div>
-            <label class="block text-xs font-semibold text-gray-700 mb-1">Status</label>
-            <select name="status" class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
-                <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>Semua Status</option>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Metode Bayar</label>
+            <select name="method" class="bg-[#F8F7F4] border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold">
+                <option value="all" <?= $methodFilter === 'all' ? 'selected' : '' ?>>Semua</option>
+                <option value="cash" <?= $methodFilter === 'cash' ? 'selected' : '' ?>>Tunai</option>
+                <option value="qris" <?= $methodFilter === 'qris' ? 'selected' : '' ?>>QRIS</option>
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-[10px] font-bold uppercase tracking-wider text-gray-500 mb-1">Status Transaksi</label>
+            <select name="status" class="bg-[#F8F7F4] border border-gray-300 rounded-xl px-3 py-2 text-xs font-semibold">
+                <option value="all" <?= $statusFilter === 'all' ? 'selected' : '' ?>>Semua</option>
                 <option value="processing" <?= $statusFilter === 'processing' ? 'selected' : '' ?>>Diproses</option>
                 <option value="completed" <?= $statusFilter === 'completed' ? 'selected' : '' ?>>Selesai</option>
                 <option value="void" <?= $statusFilter === 'void' ? 'selected' : '' ?>>Dibatalkan</option>
             </select>
         </div>
-        <div>
-            <label class="block text-xs font-semibold text-gray-700 mb-1">Metode</label>
-            <select name="method" class="w-full border border-gray-300 rounded-lg px-3 py-1.5 text-sm">
-                <option value="all" <?= $methodFilter === 'all' ? 'selected' : '' ?>>Semua Metode</option>
-                <option value="cash" <?= $methodFilter === 'cash' ? 'selected' : '' ?>>Tunai</option>
-                <option value="qris" <?= $methodFilter === 'qris' ? 'selected' : '' ?>>QRIS</option>
-            </select>
-        </div>
-        <div>
-            <button type="submit" class="w-full bg-[#1B4D3E] hover:bg-[#153d31] text-white text-sm font-semibold py-2 rounded-lg transition">
-                Filter
-            </button>
-        </div>
+
+        <button type="submit" class="bg-[#9E3B1B] hover:bg-[#822F14] text-white text-xs font-extrabold px-5 py-2.5 rounded-xl shadow-sm transition">
+            &#9906; Filter
+        </button>
     </form>
 
-    <!-- Summary KPI Bar -->
-    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-            <span class="text-xs text-gray-500 font-medium">Total Pesanan (Non-Void)</span>
-            <div class="text-xl font-bold text-[#2C3E50] mt-1"><?= (int)($summary['total_count'] ?? 0) ?></div>
-        </div>
-        <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-            <span class="text-xs text-gray-500 font-medium">Total Omset (Non-Void)</span>
-            <div class="text-xl font-bold text-[#1B4D3E] mt-1"><?= e(formatRupiah((int)($summary['total_revenue'] ?? 0))) ?></div>
-        </div>
-    </div>
-
-    <!-- Table -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-x-auto">
-        <table class="w-full text-left border-collapse text-sm">
-            <thead>
-                <tr class="bg-gray-50 border-b border-gray-200 text-[#2C3E50] font-semibold">
-                    <th class="py-3 px-4">No. Pesanan</th>
-                    <th class="py-3 px-4">Waktu</th>
-                    <th class="py-3 px-4">Meja</th>
-                    <th class="py-3 px-4">Metode</th>
-                    <th class="py-3 px-4 text-right">Total</th>
-                    <?php if ($isAdmin): ?>
-                        <th class="py-3 px-4 text-right">HPP</th>
-                        <th class="py-3 px-4 text-right">Laba Kotor</th>
-                        <th class="py-3 px-4 text-right">Laba Bersih</th>
-                        <th class="py-3 px-4">Kasir</th>
-                    <?php endif; ?>
-                    <th class="py-3 px-4 text-center">Status</th>
-                    <th class="py-3 px-4 text-right">Aksi</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-100">
-                <?php if (empty($transactions)): ?>
-                    <tr><td colspan="<?= $isAdmin ? '11' : '7' ?>" class="py-8 text-center text-gray-400 text-sm">Tidak ada transaksi ditemukan.</td></tr>
-                <?php else: ?>
-                    <?php foreach ($transactions as $tx): 
-                        $tid = (int)$tx['transaction_id'];
-                        $isVoid = $tx['status'] === 'void';
-                        $orders = $ordersByTx[$tid] ?? [];
-                    ?>
-                    <tr class="hover:bg-gray-50 <?= $isVoid ? 'opacity-60 bg-gray-50 line-through text-gray-500' : '' ?>">
-                        <td class="py-3 px-4 font-bold text-[#1B4D3E]">#<?= (int)$tx['order_no'] ?></td>
-                        <td class="py-3 px-4 whitespace-nowrap"><?= e(date('d/m/Y H:i', strtotime($tx['date']))) ?></td>
-                        <td class="py-3 px-4"><?= e($tx['table_no']) ?></td>
-                        <td class="py-3 px-4">
-                            <span class="px-2 py-0.5 rounded text-xs font-semibold <?= $tx['method'] === 'cash' ? 'bg-emerald-50 text-emerald-800' : 'bg-purple-50 text-purple-800' ?>">
-                                <?= strtoupper(e($tx['method'])) ?>
-                            </span>
-                        </td>
-                        <td class="py-3 px-4 text-right font-bold"><?= e(formatRupiah((int)$tx['total'])) ?></td>
+    <!-- Main Ledger Table -->
+    <div class="bg-white rounded-2xl shadow-sm border border-[#E6E4DD] overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left border-collapse text-sm">
+                <thead>
+                    <tr class="bg-[#F8F7F4] border-b border-[#E6E4DD] text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                        <?= sortThHistory('order_no', 'No.', $sort, $dir, $baseQuery, 'left') ?>
+                        <?= sortThHistory('date', 'Tanggal/Waktu', $sort, $dir, $baseQuery, 'left') ?>
+                        <?= sortThHistory('table_no', 'Meja', $sort, $dir, $baseQuery, 'center') ?>
+                        <?= sortThHistory('method', 'Metode', $sort, $dir, $baseQuery, 'left') ?>
+                        <?= sortThHistory('total', 'Total', $sort, $dir, $baseQuery, 'right') ?>
+                        <?= sortThHistory('status', 'Status', $sort, $dir, $baseQuery, 'center') ?>
+                        <?= sortThHistory('duration_seconds', 'Durasi', $sort, $dir, $baseQuery, 'center') ?>
                         <?php if ($isAdmin): ?>
-                            <td class="py-3 px-4 text-right text-gray-600"><?= e(formatRupiah((int)$tx['total_cost'])) ?></td>
-                            <td class="py-3 px-4 text-right text-gray-700"><?= e(formatRupiah((int)$tx['gross_profit'])) ?></td>
-                            <td class="py-3 px-4 text-right font-semibold text-emerald-700"><?= e(formatRupiah((int)$tx['alloc_profit'])) ?></td>
-                            <td class="py-3 px-4 text-gray-600"><?= e($tx['cashier_name'] ?? '-') ?></td>
+                            <?= sortThHistory('total_cost', 'HPP', $sort, $dir, $baseQuery, 'right') ?>
+                            <?= sortThHistory('gross_profit', 'Laba Kotor', $sort, $dir, $baseQuery, 'right') ?>
+                            <?= sortThHistory('cashier', 'Kasir', $sort, $dir, $baseQuery, 'center') ?>
                         <?php endif; ?>
-                        <td class="py-3 px-4 text-center">
-                            <?php if ($tx['status'] === 'completed'): ?>
-                                <span class="bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full">Selesai</span>
-                            <?php elseif ($tx['status'] === 'processing'): ?>
-                                <span class="bg-amber-100 text-amber-800 text-xs font-semibold px-2.5 py-1 rounded-full">Diproses</span>
-                            <?php else: ?>
-                                <span class="bg-red-100 text-red-700 text-xs font-semibold px-2.5 py-1 rounded-full no-underline">Dibatalkan</span>
-                            <?php endif; ?>
-                        </td>
-                        <td class="py-3 px-4 text-right whitespace-nowrap space-x-1">
-                            <a href="receipt.php?id=<?= $tid ?>&reprint=1" target="_blank"
-                               class="px-2.5 py-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-semibold">
-                                Cetak Ulang
-                            </a>
-                            <?php if ($isAdmin && !$isVoid): ?>
-                                <button type="button" class="btn-void-order px-2.5 py-1 rounded bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold"
-                                    data-transaction-id="<?= $tid ?>" data-order-no="<?= (int)$tx['order_no'] ?>">
-                                    Batalkan
-                                </button>
-                            <?php endif; ?>
-                        </td>
+                        <th class="py-3.5 px-4 text-right print:hidden">Aksi</th>
                     </tr>
-                    <?php if (!empty($orders)): ?>
-                        <tr class="bg-gray-50/50 text-xs">
-                            <td colspan="<?= $isAdmin ? '11' : '7' ?>" class="py-2 px-6">
-                                <span class="font-semibold text-gray-700">Detail Item:</span>
-                                <ul class="list-disc list-inside mt-1 space-y-0.5 text-gray-600">
-                                    <?php foreach ($orders as $ord): 
-                                        $mods = $modsByOrder[(int)$ord['order_id']] ?? [];
-                                    ?>
-                                        <li>
-                                            <?= (int)$ord['quantity'] ?>x <?= e($ord['menu_name']) ?> 
-                                            <?php if (!empty($mods)): ?>
-                                                <span class="text-gray-500">[<?= e(implode(', ', $mods)) ?>]</span>
-                                            <?php endif; ?>
-                                            (<?= e(formatRupiah((int)$ord['subtotal'])) ?>)
-                                        </li>
-                                    <?php endforeach; ?>
-                                </ul>
-                                <?php if ($isVoid && !empty($tx['void_reason'])): ?>
-                                    <div class="mt-2 text-red-600 font-medium">
-                                        Alasan Batal: <?= e($tx['void_reason']) ?> (Oleh: <?= e($tx['voided_by_name'] ?? 'Admin') ?> pada <?= e($tx['voided_at']) ?>)
-                                    </div>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    <?php if (empty($transactions)): ?>
+                        <tr><td colspan="<?= $isAdmin ? '11' : '8' ?>" class="py-10 text-center text-gray-400 text-sm">Tidak ada transaksi ditemukan pada periode ini.</td></tr>
+                    <?php else: ?>
+                        <?php foreach ($transactions as $tx):
+                            $tid = (int)$tx['transaction_id'];
+                            $isVoid = ($tx['status'] === 'void');
+                            $orders = $ordersByTx[$tid] ?? [];
+                            $durSec = $tx['duration_seconds'] !== null ? (int)$tx['duration_seconds'] : null;
+                            $durFormatted = $durSec !== null ? sprintf('%02d:%02d', floor($durSec / 60), $durSec % 60) : '--';
+                            $itemSummaryParts = [];
+                            foreach ($orders as $ord) {
+                                $mods = $modsByOrder[(int)$ord['order_id']] ?? [];
+                                $part = (int)$ord['quantity'] . 'x ' . $ord['menu_name'];
+                                if (!empty($mods)) {
+                                    $part .= ' [' . implode(', ', $mods) . ']';
+                                }
+                                $itemSummaryParts[] = $part;
+                            }
+                        ?>
+                        <tr class="hover:bg-[#F8F7F4]/50 <?= $isVoid ? 'bg-red-50/20 text-gray-400' : '' ?>">
+                            <td class="py-3.5 px-4 font-extrabold text-[#1E293B]">
+                                #<?= str_pad((string)$tx['order_no'], 3, '0', STR_PAD_LEFT) ?>
+                            </td>
+                            <td class="py-3.5 px-4 whitespace-nowrap">
+                                <div class="font-semibold text-gray-800"><?= e(date('d/m H:i', strtotime($tx['date']))) ?> WIB</div>
+                                <div class="text-[11px] <?= $isVoid ? 'text-red-600 font-semibold' : 'text-gray-400' ?>">
+                                    <?= $isVoid ? 'Dibatalkan' : ($tx['order_date'] === date('Y-m-d') ? 'Hari ini' : e($tx['order_date'])) ?>
+                                </div>
+                            </td>
+                            <td class="py-3.5 px-4 text-center">
+                                <span class="inline-block bg-[#F8F7F4] border border-gray-200 text-gray-800 font-extrabold text-xs px-2.5 py-1 rounded-lg">
+                                    <?= $tx['table_no'] === 'TA' ? 'TA' : str_pad((string)$tx['table_no'], 2, '0', STR_PAD_LEFT) ?>
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-4">
+                                <span class="px-2.5 py-1 rounded-lg text-xs font-bold <?= $tx['method'] === 'cash' ? 'bg-emerald-50 text-[#1B4D3E]' : 'bg-orange-50 text-[#9E3B1B]' ?>">
+                                    <?= $tx['method'] === 'cash' ? 'Tunai' : 'QRIS' ?>
+                                </span>
+                            </td>
+                            <td class="py-3.5 px-4 text-right font-extrabold text-base <?= $isVoid ? 'line-through text-gray-400' : 'text-[#9E3B1B]' ?>">
+                                <?= e(formatRupiah((int)$tx['total'])) ?>
+                            </td>
+                            <td class="py-3.5 px-4 text-center">
+                                <?php if ($tx['status'] === 'completed'): ?>
+                                    <span class="bg-emerald-100 text-[#1B4D3E] text-xs font-bold px-2.5 py-1 rounded-full">&bull; Selesai</span>
+                                <?php elseif ($tx['status'] === 'processing'): ?>
+                                    <span class="bg-slate-100 text-slate-800 text-xs font-bold px-2.5 py-1 rounded-full">&bull; Diproses</span>
+                                <?php else: ?>
+                                    <span class="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full">&otimes; Dibatalkan</span>
+                                <?php endif; ?>
+                            </td>
+                            <td class="py-3.5 px-4 text-center font-mono text-xs text-gray-500"><?= $durFormatted ?></td>
+                            <?php if ($isAdmin): ?>
+                                <td class="py-3.5 px-4 text-right font-medium text-gray-600">
+                                    <?= $isVoid ? '--' : e(formatRupiah((int)$tx['total_cost'])) ?>
+                                </td>
+                                <td class="py-3.5 px-4 text-right font-bold text-[#1B4D3E]">
+                                    <?= $isVoid ? '--' : e(formatRupiah((int)$tx['gross_profit'])) ?>
+                                </td>
+                                <td class="py-3.5 px-4 text-center">
+                                    <span class="bg-[#1B4D3E] text-white text-[11px] font-bold px-2.5 py-0.5 rounded">
+                                        <?= e( strtok((string)($tx['cashier_name'] ?? 'Staff'), ' ') ) ?>
+                                    </span>
+                                </td>
+                            <?php endif; ?>
+                            <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5 print:hidden">
+                                <a href="receipt.php?id=<?= $tid ?>&reprint=1" target="_blank"
+                                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold shadow-sm">
+                                    &#128462; Struk
+                                </a>
+                                <?php if ($isAdmin && !$isVoid): ?>
+                                    <button type="button" class="btn-void-order inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold"
+                                        data-transaction-id="<?= $tid ?>"
+                                        data-order-no="<?= str_pad((string)$tx['order_no'], 3, '0', STR_PAD_LEFT) ?>"
+                                        data-table-no="<?= e($tx['table_no']) ?>"
+                                        data-method="<?= strtoupper(e($tx['method'])) ?>"
+                                        data-total="<?= e(formatRupiah((int)$tx['total'])) ?>"
+                                        data-items="<?= e(implode(', ', $itemSummaryParts)) ?>">
+                                        &oslash; Batal
+                                    </button>
                                 <?php endif; ?>
                             </td>
                         </tr>
+
+                        <!-- Sub-row: Menu Snapshot or Void Reason Banner -->
+                        <?php if ($isVoid && !empty($tx['void_reason'])): ?>
+                            <tr class="bg-red-50/70 text-xs">
+                                <td colspan="<?= $isAdmin ? '11' : '8' ?>" class="py-2.5 px-5 text-red-800">
+                                    <span class="font-extrabold uppercase">&#9888; Alasan Batal:</span>
+                                    <span class="font-semibold"><?= e($tx['void_reason']) ?></span>
+                                    <span class="text-gray-500 ml-2">(Dibatalkan oleh: <strong><?= e($tx['voided_by_user'] ?? $tx['voided_by_name'] ?? 'admin') ?></strong> pada <?= e(date('H:i', strtotime($tx['voided_at']))) ?> WIB)</span>
+                                </td>
+                            </tr>
+                        <?php elseif (!empty($orders)): ?>
+                            <tr class="bg-[#FAF6F0] text-xs">
+                                <td colspan="<?= $isAdmin ? '11' : '8' ?>" class="py-2 px-5">
+                                    <span class="font-extrabold text-[#9E3B1B] uppercase mr-2">&#9432; Rincian Menu:</span>
+                                    <?php foreach ($orders as $ord):
+                                        $mods = $modsByOrder[(int)$ord['order_id']] ?? [];
+                                    ?>
+                                        <span class="inline-block bg-white border border-[#E6E4DD] rounded-lg px-2.5 py-0.5 mr-1.5 my-0.5 text-gray-800 font-semibold">
+                                            <strong><?= (int)$ord['quantity'] ?>x <?= e($ord['menu_name']) ?></strong>
+                                            <?php if (!empty($mods)): ?>
+                                                <em class="text-gray-500 font-normal">[<?= e(implode(', ', $mods)) ?>]</em>
+                                            <?php endif; ?>
+                                        </span>
+                                    <?php endforeach; ?>
+                                </td>
+                            </tr>
+                        <?php endif; ?>
+                        <?php endforeach; ?>
                     <?php endif; ?>
-                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Bottom Summary Bar (Figma Slide 5) -->
+        <div class="bg-[#F4FBF7] border-t border-emerald-200 px-5 py-3.5 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-2 text-xs">
+                <span class="font-bold text-gray-700">Ringkasan Transaksi Sah:</span>
+                <span class="bg-emerald-100 text-[#1B4D3E] font-extrabold px-2.5 py-0.5 rounded-full">
+                    <?= (int)($summary['valid_count'] ?? 0) ?> Transaksi Aktif
+                </span>
+                <?php if ((int)($summary['void_count'] ?? 0) > 0): ?>
+                    <span class="text-gray-400">(&#9888; <?= (int)$summary['void_count'] ?> void diabaikan)</span>
                 <?php endif; ?>
-            </tbody>
-        </table>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-5 text-sm">
+                <div>
+                    <span class="text-xs text-gray-500 mr-1">Total Omset:</span>
+                    <strong class="text-lg font-extrabold text-[#9E3B1B]"><?= formatRupiah((int)($summary['total_revenue'] ?? 0)) ?></strong>
+                </div>
+                <?php if ($isAdmin): ?>
+                    <div>
+                        <span class="text-xs text-gray-500 mr-1">Total HPP:</span>
+                        <strong class="font-extrabold text-gray-800"><?= formatRupiah((int)($summary['total_cost'] ?? 0)) ?></strong>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500 mr-1">Total Laba Kotor:</span>
+                        <strong class="text-lg font-extrabold text-[#1B4D3E]"><?= formatRupiah((int)($summary['total_gross_profit'] ?? 0)) ?></strong>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+
+        <!-- Pagination Footer -->
+        <div class="bg-white border-t border-gray-100 px-5 py-3 flex items-center justify-between text-xs text-gray-500">
+            <span>Menampilkan <strong><?= count($transactions) ?></strong> dari <strong><?= $totalRows ?></strong> transaksi &bull; 50 baris per halaman</span>
+            <?php if ($totalPages > 1): ?>
+                <div class="flex items-center gap-1">
+                    <?php for ($p = 1; $p <= $totalPages; $p++): ?>
+                        <a href="history.php?<?= e(http_build_query(array_merge($baseQuery, ['sort' => $sort, 'dir' => $dir, 'page' => $p]))) ?>"
+                           class="w-7 h-7 rounded-lg flex items-center justify-center font-bold <?= $p === $page ? 'bg-[#9E3B1B] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200' ?>">
+                            <?= $p ?>
+                        </a>
+                    <?php endfor; ?>
+                </div>
+            <?php endif; ?>
+        </div>
     </div>
 </div>
 
-<!-- Void Modal -->
-<div id="void-modal" class="fixed inset-0 z-50 hidden bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-        <div class="bg-red-700 text-white px-5 py-3.5 flex justify-between items-center">
-            <h3 class="font-bold text-base">Batalkan Pesanan #<span id="void-order-no-text"></span></h3>
-            <button type="button" id="void-modal-close" class="text-white/80 hover:text-white text-2xl leading-none">&times;</button>
+<!-- Void Modal (Figma Slide 6) -->
+<div id="void-modal" class="fixed inset-0 z-50 hidden bg-black/55 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#E6E4DD]">
+        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <span class="w-9 h-9 rounded-full bg-red-100 text-red-700 flex items-center justify-center font-bold">&oslash;</span>
+                <div>
+                    <h3 class="font-extrabold text-base text-[#1E293B] uppercase">BATALKAN PESANAN #<span id="void-order-no-text"></span></h3>
+                    <p class="text-xs text-gray-500">Konfirmasi otorisasi void transaksi oleh Admin</p>
+                </div>
+            </div>
+            <button type="button" id="void-modal-close" class="text-gray-400 hover:text-gray-700 text-2xl leading-none">&times;</button>
         </div>
-        <form id="void-form" class="p-5 space-y-4">
+
+        <form id="void-form" class="p-6 space-y-4">
             <input type="hidden" id="void-tx-id" value="">
-            <div class="bg-amber-50 border border-amber-200 text-amber-900 text-xs p-3 rounded-lg leading-relaxed">
-                <strong>Kebijakan Pembatalan:</strong> Pesanan yang dibatalkan akan dikecualikan dari omset, laba, dan laporan. Nomor pesanan tidak akan digunakan ulang. Tindakan ini tidak dapat dibatalkan.
+
+            <!-- Selected Order Summary Box -->
+            <div class="bg-[#F8F7F4] border border-[#E6E4DD] rounded-xl p-3.5 flex items-center justify-between">
+                <div>
+                    <span id="void-meta-badge" class="text-[10px] font-extrabold uppercase bg-gray-200 text-gray-700 px-2 py-0.5 rounded">MEJA</span>
+                    <div id="void-items-preview" class="text-xs text-gray-600 font-medium mt-1"></div>
+                </div>
+                <div id="void-total-preview" class="text-lg font-extrabold text-[#1E293B]">Rp0</div>
             </div>
+
             <div>
-                <label class="block text-xs font-semibold text-gray-700 mb-1">Alasan Pembatalan (Wajib, min. 3 karakter) <span class="text-red-600">*</span></label>
-                <textarea id="void-reason-input" required minlength="3" maxlength="255" rows="3" placeholder="Masukkan alasan pembatalan..."
-                    class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-red-700 focus:outline-none"></textarea>
-                <div class="text-right text-[11px] text-gray-400 mt-0.5"><span id="char-count">0</span>/255</div>
+                <div class="flex justify-between items-center mb-1">
+                    <label class="block text-xs font-bold text-gray-800">Alasan Pembatalan (Wajib Diisi) <span class="text-red-600">*</span></label>
+                    <span class="text-[10px] font-semibold text-gray-400">Terekam di Log Audit</span>
+                </div>
+                <textarea id="void-reason-input" required minlength="3" maxlength="255" rows="2" placeholder="Contoh: Salah input tingkat pedas; pesanan dibuat ulang"
+                    class="w-full bg-[#F8F7F4] border border-gray-300 rounded-xl p-3 text-sm focus:bg-white focus:ring-2 focus:ring-red-700 focus:outline-none"></textarea>
+                <div class="flex justify-between text-[11px] text-gray-400 mt-1">
+                    <span>Pastikan alasan jelas untuk verifikasi rekap keuangan kasir.</span>
+                    <span><span id="char-count">0</span>/255 karakter</span>
+                </div>
             </div>
-            <div class="flex justify-end gap-2 pt-2 border-t">
-                <button type="button" id="void-modal-cancel" class="px-4 py-2 rounded-lg border text-sm font-medium hover:bg-gray-50">Tutup</button>
-                <button type="submit" id="void-submit-btn" disabled class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white text-sm font-semibold">
-                    Ya, Batalkan Pesanan
+
+            <!-- Critical Warning Box (5 Bullet Rules from SRS & Figma Slide 6) -->
+            <div class="bg-red-50/80 border border-red-200 text-red-900 text-xs p-4 rounded-xl space-y-1.5">
+                <div class="font-extrabold uppercase text-red-800 flex items-center gap-1.5">
+                    <span>&#9888; Peringatan Kritis</span>
+                </div>
+                <ul class="list-disc list-inside space-y-1 text-red-800/90">
+                    <li>Pesanan akan dibatalkan secara permanen (status: <strong>VOID</strong>).</li>
+                    <li>Dikeluarkan dari omset, laba, dan seluruh laporan keuangan.</li>
+                    <li>Nomor pesanan tidak akan digunakan ulang.</li>
+                    <li>Tindakan ini tidak dapat dibatalkan (audit tersimpan).</li>
+                    <li>Pengembalian uang ke pelanggan dilakukan manual di kasir.</li>
+                </ul>
+            </div>
+
+            <div class="flex justify-between items-center gap-3 pt-2">
+                <button type="button" id="void-modal-cancel" class="px-4 py-2.5 rounded-xl border border-gray-300 text-xs font-bold text-gray-700 hover:bg-gray-50">
+                    &larr; Kembali
+                </button>
+                <button type="submit" id="void-submit-btn" disabled class="flex-1 py-3 rounded-xl bg-[#9E3B1B] hover:bg-[#822F14] disabled:bg-gray-300 text-white text-xs font-extrabold uppercase tracking-wider shadow-sm transition">
+                    &#10004; YA, BATALKAN PESANAN
                 </button>
             </div>
         </form>
@@ -322,6 +486,9 @@ document.addEventListener('DOMContentLoaded', function () {
         btn.addEventListener('click', () => {
             voidTxId.value = btn.dataset.transactionId;
             voidOrderNoText.textContent = btn.dataset.orderNo;
+            document.getElementById('void-meta-badge').textContent = (btn.dataset.tableNo === 'TA' ? 'MEJA TA' : 'MEJA ' + btn.dataset.tableNo) + ' • ' + btn.dataset.method;
+            document.getElementById('void-items-preview').textContent = btn.dataset.items || '-';
+            document.getElementById('void-total-preview').textContent = btn.dataset.total || 'Rp0';
             reasonInput.value = '';
             charCount.textContent = '0';
             submitBtn.disabled = true;
