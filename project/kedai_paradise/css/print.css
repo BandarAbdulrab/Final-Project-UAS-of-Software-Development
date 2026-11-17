@@ -1,0 +1,148 @@
+/* css/print.css - A4 Landscape Print & PDF Stylesheet (SRS-NF13, TC-D08) */
+
+@media screen {
+    .print-only,
+    .print-header {
+        display: none !important;
+    }
+}
+
+@media print {
+    @page {
+        size: A4 landscape;
+        margin: 10mm;
+    }
+
+    *,
+    *::before,
+    *::after {
+        box-sizing: border-box;
+        color: #000000 !important;
+        background: transparent !important;
+        box-shadow: none !important;
+        text-shadow: none !important;
+    }
+
+    html,
+    body {
+        width: 100%;
+        margin: 0 !important;
+        padding: 0 !important;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 9.5pt;
+        line-height: 1.35;
+    }
+
+    /* Hide navigation, filter forms, buttons, pagination, modals, and toasts */
+    nav,
+    header nav,
+    footer,
+    form,
+    button,
+    input,
+    select,
+    textarea,
+    .no-print,
+    .btn,
+    .pagination,
+    .modal,
+    #toast-container,
+    [role="navigation"],
+    [role="dialog"],
+    a[href*="export_csv.php"],
+    button[onclick*="print"] {
+        display: none !important;
+    }
+
+    /* Reveal print header block */
+    .print-only,
+    .print-header {
+        display: block !important;
+    }
+
+    .print-header {
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #000000;
+    }
+
+    .print-header h1 {
+        font-size: 14pt;
+        font-weight: bold;
+        margin: 0 0 2px 0;
+    }
+
+    .print-header h2 {
+        font-size: 11.5pt;
+        font-weight: bold;
+        margin: 0 0 4px 0;
+    }
+
+    .print-header .print-meta {
+        font-size: 8.5pt;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    /* Expand main layout containers to full printable width */
+    main,
+    .container,
+    .max-w-7xl,
+    .max-w-6xl,
+    .overflow-x-auto {
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: visible !important;
+    }
+
+    /* Table formatting: repeat headers across pages, prevent row splitting, fit all columns */
+    table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        table-layout: auto !important;
+        margin-bottom: 12px;
+        font-size: 8.5pt;
+    }
+
+    thead {
+        display: table-header-group !important;
+    }
+
+    tfoot {
+        display: table-footer-group !important;
+        font-weight: bold;
+    }
+
+    tr {
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+    }
+
+    th,
+    td {
+        border: 1px solid #333333 !important;
+        padding: 4px 6px !important;
+        vertical-align: top;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+
+    th {
+        font-weight: bold;
+        text-align: left;
+    }
+
+    /* Preserve strikethrough on voided rows */
+    .line-through {
+        text-decoration: line-through !important;
+    }
+
+    /* Strip URL printing after links */
+    a[href]::after {
+        content: none !important;
+    }
+}
