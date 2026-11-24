@@ -38,6 +38,15 @@ $settings = $pdo->query(
 $tableCount = max(1, (int)($settings['table_count'] ?? 10));
 $qrisImageUrl = !empty($settings['qris_image']) ? ('uploads/' . ltrim((string)$settings['qris_image'], '/')) : '';
 
+// Soft occupied-table indicator (non-blocking) for tables with active processing orders
+$activeTablesRaw = $pdo->query(
+    "SELECT DISTINCT table_no FROM transactions WHERE status = 'processing' AND table_no <> 'TA'"
+)->fetchAll(PDO::FETCH_COLUMN);
+$activeTableNums = [];
+foreach ($activeTablesRaw as $tNo) {
+    $activeTableNums[(int)$tNo] = true;
+}
+
 $pageTitle = 'Kasir (POS) - Kedai Paradise';
 include __DIR__ . '/includes/layout_header.php';
 ?>
@@ -171,8 +180,10 @@ include __DIR__ . '/includes/layout_header.php';
                 class="w-full bg-[#F8F7F4] border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#1B4D3E]">
                 <option value="">-- Pilih Nomor Meja / TA --</option>
                 <option value="TA">&#128717; Bawa Pulang (TA)</option>
-                <?php for ($i = 1; $i <= $tableCount; $i++): ?>
-                    <option value="<?= $i ?>">Meja <?= str_pad((string)$i, 2, '0', STR_PAD_LEFT) ?></option>
+                <?php for ($i = 1; $i <= $tableCount; $i++):
+                    $isOccupied = !empty($activeTableNums[$i]);
+                ?>
+                    <option value="<?= $i ?>">Meja <?= str_pad((string)$i, 2, '0', STR_PAD_LEFT) ?><?= $isOccupied ? ' (Aktif)' : '' ?></option>
                 <?php endfor; ?>
             </select>
         </div>
