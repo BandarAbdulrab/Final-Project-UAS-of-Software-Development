@@ -41,7 +41,7 @@ function sortLinkFinance(string $col, string $label, string $currentSort, string
     $arrow = $currentSort === $col ? ($currentDir === 'asc' ? ' &#9650;' : ' &#9660;') : '';
     $url = 'finance.php?' . http_build_query(array_merge($baseParams, ['sort' => $col, 'dir' => $nextDir]));
     $alignClass = $align === 'right' ? 'text-right' : ($align === 'center' ? 'text-center' : 'text-left');
-    return '<th class="p-3.5 ' . $alignClass . '"><a href="' . e($url) . '" class="hover:text-[#1B4D3E] font-bold">' . e($label) . $arrow . '</a></th>';
+    return '<th class="py-3 px-2.5 ' . $alignClass . '"><a href="' . e($url) . '" class="hover:text-[#1B4D3E] font-bold whitespace-nowrap">' . e($label) . $arrow . '</a></th>';
 }
 
 $baseQuery = [
@@ -52,6 +52,7 @@ $baseQuery = [
     'category' => $filterCat,
 ];
 
+$printPeriodLabel = date('d/m/Y', strtotime($fromDate)) . ' s/d ' . date('d/m/Y', strtotime($toDate));
 include __DIR__ . '/includes/layout_header.php';
 ?>
 
@@ -75,9 +76,9 @@ include __DIR__ . '/includes/layout_header.php';
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        <!-- Left 4 Columns: Record / Edit Form -->
-        <div class="lg:col-span-4 bg-white rounded-2xl shadow-sm border border-[#E6E4DD] p-6 space-y-4">
+    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+        <!-- Left 4 Columns: Record / Edit Form (hidden in print) -->
+        <div class="xl:col-span-4 bg-white rounded-2xl shadow-sm border border-[#E6E4DD] p-6 space-y-4 no-print print:hidden">
             <div class="flex items-center justify-between border-b border-gray-100 pb-3">
                 <div>
                     <h2 id="financeFormTitle" class="font-extrabold text-sm text-[#1E293B] uppercase">CATAT TRANSAKSI KEUANGAN</h2>
@@ -86,7 +87,7 @@ include __DIR__ . '/includes/layout_header.php';
                 <button type="button" id="btnResetFinanceForm" onclick="resetFinanceForm()" class="hidden text-xs text-red-600 font-bold hover:underline">Batal Ubah</button>
             </div>
 
-            <form id="financeForm" onsubmit="submitFinance(event)" class="space-y-4">
+            <form id="financeForm" onsubmit="submitFinance(event)" class="space-y-4" autocomplete="off">
                 <input type="hidden" name="action" id="fin_action" value="create">
                 <input type="hidden" name="finance_id" id="fin_id" value="">
 
@@ -117,7 +118,7 @@ include __DIR__ . '/includes/layout_header.php';
 
                 <div>
                     <label class="block text-xs font-bold text-gray-700 mb-1">Kategori <span class="text-red-600">*</span></label>
-                    <input type="text" name="category" id="fin_category" maxlength="100"
+                    <input type="text" name="category" id="fin_category" maxlength="100" autocomplete="off"
                            placeholder="Contoh: Belanja bahan baku, Token Listrik" required list="catList"
                            class="w-full bg-[#F8F7F4] border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:bg-white">
                     <datalist id="catList">
@@ -149,8 +150,8 @@ include __DIR__ . '/includes/layout_header.php';
             </form>
         </div>
 
-        <!-- Right 8 Columns: Filter & Ledger Table -->
-        <div class="lg:col-span-8 bg-white rounded-2xl shadow-sm border border-[#E6E4DD] overflow-hidden">
+        <!-- Right 8 Columns: Filter & Ledger Table (expands full width in print) -->
+        <div class="xl:col-span-8 print-full bg-white rounded-2xl shadow-sm border border-[#E6E4DD] overflow-hidden">
             <div class="p-5 border-b border-gray-100 space-y-3">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <div>
@@ -169,7 +170,7 @@ include __DIR__ . '/includes/layout_header.php';
                     </div>
                 </div>
 
-                <form method="GET" class="flex flex-wrap items-center gap-2 pt-1 print:hidden">
+                <form method="GET" class="flex flex-wrap items-center gap-2 pt-1 print:hidden" autocomplete="off">
                     <input type="hidden" name="sort" value="<?= e($sort) ?>">
                     <input type="hidden" name="dir" value="<?= e($dir) ?>">
                     <input type="date" name="from" value="<?= e($fromDate) ?>" class="bg-[#F8F7F4] border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs font-semibold">
@@ -186,7 +187,7 @@ include __DIR__ . '/includes/layout_header.php';
                         <option value="operating" <?= $filterPool === 'operating' ? 'selected' : '' ?>>Operasional</option>
                         <option value="profit" <?= $filterPool === 'profit' ? 'selected' : '' ?>>Laba</option>
                     </select>
-                    <input type="text" name="category" value="<?= e($filterCat) ?>" placeholder="Cari kategori..."
+                    <input type="text" name="category" value="<?= e($filterCat) ?>" autocomplete="off" placeholder="Cari kategori..."
                            class="bg-[#F8F7F4] border border-gray-300 rounded-xl px-2.5 py-1.5 text-xs">
                     <button type="submit" class="bg-[#1B4D3E] text-white px-3.5 py-1.5 rounded-xl text-xs font-bold hover:bg-[#153d31]">Saring</button>
                 </form>
@@ -202,7 +203,7 @@ include __DIR__ . '/includes/layout_header.php';
                             <?= sortLinkFinance('pool', 'Pos Dana', $sort, $dir, $baseQuery, 'left') ?>
                             <?= sortLinkFinance('amount', 'Nominal', $sort, $dir, $baseQuery, 'right') ?>
                             <?= sortLinkFinance('recorder_name', 'User', $sort, $dir, $baseQuery, 'left') ?>
-                            <th class="p-3.5 text-center print:hidden">Aksi</th>
+                            <th class="py-3 px-2.5 text-center print:hidden">Aksi</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -224,33 +225,33 @@ include __DIR__ . '/includes/layout_header.php';
                             ]), ENT_QUOTES, 'UTF-8');
                         ?>
                             <tr class="hover:bg-[#F8F7F4]/60">
-                                <td class="p-3.5 text-xs text-gray-600 whitespace-nowrap">
+                                <td class="py-3 px-2.5 text-xs text-gray-600 whitespace-nowrap">
                                     <div class="font-bold text-gray-800"><?= e(date('d/m/Y', strtotime($row['date']))) ?></div>
                                     <div class="text-[11px] text-gray-400"><?= e(date('H:i', strtotime($row['date']))) ?> WIB</div>
                                 </td>
-                                <td class="p-3.5">
+                                <td class="py-3 px-2.5 whitespace-nowrap">
                                     <?php if ($row['type'] === 'income'): ?>
-                                        <span class="bg-emerald-100 text-[#1B4D3E] px-2.5 py-1 rounded-full text-xs font-extrabold">&darr; Pemasukan</span>
+                                        <span class="inline-block whitespace-nowrap bg-emerald-100 text-[#1B4D3E] px-2.5 py-1 rounded-full text-xs font-extrabold">&darr; Pemasukan</span>
                                     <?php else: ?>
-                                        <span class="bg-red-100 text-red-700 px-2.5 py-1 rounded-full text-xs font-extrabold">&uarr; Pengeluaran</span>
+                                        <span class="inline-block whitespace-nowrap bg-red-100 text-red-700 px-2.5 py-1 rounded-full text-xs font-extrabold">&uarr; Pengeluaran</span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="p-3.5">
+                                <td class="py-3 px-2.5 min-w-[150px]">
                                     <div class="font-extrabold text-[#1E293B]"><?= e($row['category']) ?></div>
                                     <?php if (!empty($row['description'])): ?>
                                         <div class="text-xs text-gray-500"><?= e($row['description']) ?></div>
                                     <?php endif; ?>
                                 </td>
-                                <td class="p-3.5">
-                                    <span class="bg-[#F8F7F4] border border-gray-200 text-gray-700 px-2.5 py-1 rounded-lg text-xs font-bold">
+                                <td class="py-3 px-2.5 whitespace-nowrap">
+                                    <span class="inline-block whitespace-nowrap bg-[#F8F7F4] border border-gray-200 text-gray-700 px-2.5 py-1 rounded-lg text-xs font-bold">
                                         <?= e($poolLabels[$row['pool']] ?? $row['pool']) ?>
                                     </span>
                                 </td>
-                                <td class="p-3.5 text-right font-extrabold whitespace-nowrap <?= $row['type'] === 'income' ? 'text-[#1B4D3E]' : 'text-[#9E3B1B]' ?>">
+                                <td class="py-3 px-2.5 text-right font-extrabold whitespace-nowrap <?= $row['type'] === 'income' ? 'text-[#1B4D3E]' : 'text-[#9E3B1B]' ?>">
                                     <?= $row['type'] === 'income' ? '+ ' : '- ' ?><?= formatRupiah((int)$row['amount']) ?>
                                 </td>
-                                <td class="p-3.5 text-xs font-semibold text-gray-600"><?= e($row['recorder_name']) ?></td>
-                                <td class="p-3.5 text-center whitespace-nowrap space-x-1 print:hidden">
+                                <td class="py-3 px-2.5 text-xs font-semibold text-gray-600 whitespace-nowrap"><?= e($row['recorder_name']) ?></td>
+                                <td class="py-3 px-2.5 text-center whitespace-nowrap space-x-1 print:hidden">
                                     <button type="button" onclick='openEditFinanceModal(<?= $rowJson ?>)'
                                             class="px-2.5 py-1 rounded-lg bg-[#F8F7F4] hover:bg-gray-200 text-gray-700 border border-gray-200 text-xs font-bold">
                                         Ubah
