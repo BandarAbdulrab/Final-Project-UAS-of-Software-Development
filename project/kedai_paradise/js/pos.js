@@ -568,8 +568,7 @@
 
       document.querySelectorAll(".cash-quick-btn").forEach((btn) => {
         btn.addEventListener("click", () => {
-          let val = Number(btn.dataset.val);
-          if (val < total) val = total;
+          const val = Number(btn.dataset.val);
           cashInput.value = val;
           cashInput.dispatchEvent(new Event("input"));
         });
