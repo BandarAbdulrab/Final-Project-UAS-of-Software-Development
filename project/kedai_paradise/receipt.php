@@ -22,9 +22,9 @@ $pdo = db();
 
 // Fetch transaction & settings
 $stmtTx = $pdo->prepare(
-    'SELECT t.*, u.name AS cashier_name 
-     FROM transactions t 
-     LEFT JOIN users u ON u.user_id = t.user_id 
+    'SELECT t.*, u.name AS cashier_name
+     FROM transactions t
+     LEFT JOIN users u ON u.user_id = t.user_id
      WHERE t.transaction_id = :id LIMIT 1'
 );
 $stmtTx->execute([':id' => $transactionId]);
@@ -42,9 +42,9 @@ $receiptFooter = $settings['receipt_footer'] ?? 'Terima kasih telah berkunjung!'
 
 // Fetch order items
 $stmtOrders = $pdo->prepare(
-    'SELECT o.*, m.name AS menu_name 
-     FROM orders o 
-     JOIN menu m ON m.menu_id = o.menu_id 
+    'SELECT o.*, m.name AS menu_name
+     FROM orders o
+     JOIN menu m ON m.menu_id = o.menu_id
      WHERE o.transaction_id = :id'
 );
 $stmtOrders->execute([':id' => $transactionId]);
@@ -134,7 +134,7 @@ if (!empty($orderIds)) {
 
     <div class="flex-between">
         <span>No: #<?= (int)$tx['order_no'] ?></span>
-        <span>Meja: <?= e($tx['table_no']) ?></span>
+        <span><?= $tx['table_no'] === 'TA' ? 'Bawa Pulang (TA)' : 'Meja: ' . e($tx['table_no']) ?></span>
     </div>
     <div class="flex-between">
         <span>Kasir: <?= e($tx['cashier_name'] ?? 'Admin') ?></span>
@@ -142,7 +142,7 @@ if (!empty($orderIds)) {
     </div>
     <div class="divider"></div>
 
-    <?php foreach ($orders as $ord): 
+    <?php foreach ($orders as $ord):
         $mods = $modifiersByOrder[(int)$ord['order_id']] ?? [];
     ?>
         <div><strong><?= (int)$ord['quantity'] ?>x <?= e($ord['menu_name']) ?></strong></div>
@@ -162,7 +162,7 @@ if (!empty($orderIds)) {
     </div>
     <div class="flex-between">
         <span>Metode:</span>
-        <span><?= strtoupper(e($tx['method'])) ?></span>
+        <span><?= $tx['method'] === 'cash' ? 'TUNAI' : 'QRIS' ?></span>
     </div>
     <div class="flex-between">
         <span>Dibayar:</span>
