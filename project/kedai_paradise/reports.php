@@ -28,6 +28,19 @@ $np  = (int)($kpi['total_net_profit'] ?? 0);
 $gpMargin = $rev > 0 ? round(($gp / $rev) * 100, 1) : 0.0;
 $npMargin = $rev > 0 ? round(($np / $rev) * 100, 1) : 0.0;
 
+function formatDurationHuman($seconds): string {
+    $sec = (int)round((float)($seconds ?? 0));
+    if ($sec <= 0) {
+        return '-';
+    }
+    if ($sec >= 3600) {
+        $h = (int)floor($sec / 3600);
+        $m = (int)floor(($sec % 3600) / 60);
+        return sprintf('%dj %02dm', $h, $m);
+    }
+    return sprintf('%02d:%02d', (int)floor($sec / 60), $sec % 60);
+}
+
 function sortLinkReport(string $col, string $label, string $currentSort, string $currentDir, string $from, string $to, string $align = 'left'): string {
     $nextDir = ($currentSort === $col && $currentDir === 'asc') ? 'desc' : 'asc';
     $arrow = $currentSort === $col ? ($currentDir === 'asc' ? ' &#9650;' : ' &#9660;') : ' &#8693;';
@@ -36,6 +49,7 @@ function sortLinkReport(string $col, string $label, string $currentSort, string 
     return '<th class="p-3.5 ' . $alignClass . '"><a href="' . e($url) . '" class="hover:text-[#1B4D3E] font-bold whitespace-nowrap">' . e($label) . '<span class="text-[10px] text-gray-400">' . $arrow . '</span></a></th>';
 }
 
+$printPeriodLabel = date('d/m/Y', strtotime($fromDate)) . ' s/d ' . date('d/m/Y', strtotime($toDate));
 include __DIR__ . '/includes/layout_header.php';
 ?>
 
@@ -114,7 +128,7 @@ include __DIR__ . '/includes/layout_header.php';
             <span class="font-extrabold uppercase tracking-wider text-gray-500">Ringkasan Metrik Operasional:</span>
             <span>Volume: <strong><?= (int)$kpi['total_orders'] ?> Pesanan</strong></span>
             <span>&bull;</span>
-            <span>Rata-rata Durasi Saji: <strong><?= round((float)($kpi['avg_duration'] ?? 0)) ?> dtk</strong></span>
+            <span>Rata-rata Durasi Saji: <strong title="<?= round((float)($kpi['avg_duration'] ?? 0)) ?> detik"><?= e(formatDurationHuman($kpi['avg_duration'] ?? 0)) ?></strong></span>
         </div>
         <div class="flex flex-wrap items-center gap-4 font-bold">
             <span class="bg-emerald-50 text-[#1B4D3E] px-3 py-1 rounded-full">
@@ -213,7 +227,9 @@ include __DIR__ . '/includes/layout_header.php';
                             <td class="p-3.5 text-right text-gray-500"><?= formatRupiah((int)$row['cost']) ?></td>
                             <td class="p-3.5 text-right font-bold text-[#1B4D3E]"><?= formatRupiah((int)$row['gross_profit']) ?></td>
                             <td class="p-3.5 text-right font-extrabold text-emerald-700"><?= formatRupiah((int)$row['net_profit']) ?></td>
-                            <td class="p-3.5 text-center text-xs text-gray-500"><?= round((float)($row['avg_duration'] ?? 0)) ?> dtk</td>
+                            <td class="p-3.5 text-center font-mono text-xs text-gray-600" title="<?= round((float)($row['avg_duration'] ?? 0)) ?> detik">
+                                <?= e(formatDurationHuman($row['avg_duration'] ?? 0)) ?>
+                            </td>
                         </tr>
                     <?php endforeach; endif; ?>
                 </tbody>
