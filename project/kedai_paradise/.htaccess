@@ -5,10 +5,11 @@
     RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 </IfModule>
 
-# 2. HTTP Strict Transport Security (HSTS)
+# 2. HTTP Strict Transport Security (HSTS) & Security Headers
 <IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
     Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
-    # 3. Security Headers
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
     Header set Referrer-Policy "strict-origin-when-cross-origin"
