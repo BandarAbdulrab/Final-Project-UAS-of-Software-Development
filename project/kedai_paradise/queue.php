@@ -48,6 +48,7 @@ $completedToday = $pdo->query(
      ORDER BY t.completed_at DESC LIMIT 20'
 )->fetchAll();
 
+$todayYmd = date('Y-m-d');
 $pageTitle = 'Antrian Pesanan Masuk - Kedai Paradise';
 include __DIR__ . '/includes/layout_header.php';
 ?>
@@ -89,6 +90,7 @@ include __DIR__ . '/includes/layout_header.php';
                 $tid = (int)$tx['transaction_id'];
                 $items = $activeItemsByTx[$tid] ?? [];
                 $timestamp = strtotime($tx['date']);
+                $isOlderDay = (date('Y-m-d', $timestamp) !== $todayYmd);
                 $elapsedSec = max(0, time() - $timestamp);
                 $isTakeAway = ($tx['table_no'] === 'TA');
                 $isUrgent = ($elapsedSec >= 900); // >= 15 mins
@@ -98,24 +100,31 @@ include __DIR__ . '/includes/layout_header.php';
             <div class="bg-white rounded-2xl shadow-sm border border-[#E6E4DD] p-5 flex flex-col justify-between space-y-4 <?= $topBorderClass ?>"
                  data-timestamp="<?= $timestamp ?>">
                 <div>
-                    <div class="flex justify-between items-start">
+                    <div class="flex justify-between items-start gap-2">
                         <div>
-                            <?php if ($isUrgent): ?>
-                                <span class="text-[10px] font-extrabold uppercase tracking-wider text-red-600 block">Perhatian Segera &bull;</span>
-                            <?php else: ?>
-                                <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400 block">
-                                    <?= $isTakeAway ? 'Tiket Bungkus' : 'Tiket Meja' ?>
-                                </span>
-                            <?php endif; ?>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <?php if ($isUrgent): ?>
+                                    <span class="text-[10px] font-extrabold uppercase tracking-wider text-red-600">Perhatian Segera &bull;</span>
+                                <?php else: ?>
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                                        <?= $isTakeAway ? 'Tiket Bungkus' : 'Tiket Meja' ?>
+                                    </span>
+                                <?php endif; ?>
+                                <?php if ($isOlderDay): ?>
+                                    <span class="text-[10px] font-bold bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-full">
+                                        <?= e(date('d/m/Y', $timestamp)) ?>
+                                    </span>
+                                <?php endif; ?>
+                            </div>
                             <h2 class="text-3xl font-extrabold text-[#1E293B]">No. <?= str_pad((string)$tx['order_no'], 3, '0', STR_PAD_LEFT) ?></h2>
                         </div>
 
                         <?php if ($isTakeAway): ?>
-                            <span class="bg-amber-100 text-amber-900 border border-amber-300 text-sm font-extrabold px-3.5 py-1.5 rounded-xl">
+                            <span class="bg-amber-100 text-amber-900 border border-amber-300 text-sm font-extrabold px-3.5 py-1.5 rounded-xl whitespace-nowrap">
                                 &#128717; TA
                             </span>
                         <?php else: ?>
-                            <span class="bg-emerald-100 text-[#1B4D3E] text-sm font-extrabold px-3.5 py-1.5 rounded-xl">
+                            <span class="bg-emerald-100 text-[#1B4D3E] text-sm font-extrabold px-3.5 py-1.5 rounded-xl whitespace-nowrap">
                                 Meja <?= str_pad((string)$tx['table_no'], 2, '0', STR_PAD_LEFT) ?>
                             </span>
                         <?php endif; ?>
@@ -123,7 +132,7 @@ include __DIR__ . '/includes/layout_header.php';
 
                     <!-- Time Bar -->
                     <div class="mt-3 flex items-center justify-between text-xs px-3 py-1.5 rounded-lg <?= $isUrgent ? 'bg-red-50 text-red-700' : ($isWarn ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50/70 text-[#1B4D3E]') ?>">
-                        <span>&#128337; Masuk: <strong><?= e(date('H:i', $timestamp)) ?></strong></span>
+                        <span>&#128337; Masuk: <strong><?= e($isOlderDay ? date('d/m H:i', $timestamp) : date('H:i', $timestamp)) ?></strong></span>
                         <span class="timer-display font-extrabold" data-time="<?= $timestamp ?>">Lama: 00:00</span>
                     </div>
                 </div>
@@ -206,14 +215,23 @@ include __DIR__ . '/includes/layout_header.php';
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    function formatElapsed(diff) {
+        if (diff >= 3600) {
+            const h = Math.floor(diff / 3600);
+            const m = Math.floor((diff % 3600) / 60);
+            return `${h}j ${String(m).padStart(2, '0')}m`;
+        }
+        const mm = String(Math.floor(diff / 60)).padStart(2, '0');
+        const ss = String(diff % 60).padStart(2, '0');
+        return `${mm}:${ss}`;
+    }
+
     function updateTimers() {
         const now = Math.floor(Date.now() / 1000);
         document.querySelectorAll('.timer-display').forEach(el => {
             const start = Number(el.dataset.time);
             const diff = Math.max(0, now - start);
-            const mm = String(Math.floor(diff / 60)).padStart(2, '0');
-            const ss = String(diff % 60).padStart(2, '0');
-            el.textContent = `Lama: ${mm}:${ss}`;
+            el.textContent = `Lama: ${formatElapsed(diff)}`;
         });
     }
     updateTimers();
