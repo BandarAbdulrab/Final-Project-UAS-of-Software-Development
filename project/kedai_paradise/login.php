@@ -1,7 +1,7 @@
 <?php
 /**
  * Login page (SRS-F01): bcrypt check, 5 failed attempts lock sign-in for 15 minutes,
- * plus automatic dual-database routing (Live vs Testing DB).
+ * plus automatic dual-database routing (Live vs Testing DB, including custom accounts created in DEMO DB).
  */
 require_once __DIR__ . '/includes/bootstrap.php';
 require_once __DIR__ . '/includes/auth_functions.php';
@@ -23,7 +23,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($username === '' || $password === '') {
         $error = t('login_required');
     } else {
-        // Route to testing DB if username is a test account, otherwise live DB
         $targetMode = isTestUsername($username) ? 'test' : 'live';
         setActiveDbMode($targetMode);
         $pdo = db($targetMode);
@@ -40,23 +39,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt->execute([':u' => $username]);
             $user = $stmt->fetch();
 
-            $passwordOk = password_verify($password, $user ? $user['password_hash'] : LOGIN_DUMMY_HASH);
-
-            if ($user && (int)$user['status'] === 1 && $passwordOk) {
-                clearLoginAttempts($pdo, $username);
-                session_regenerate_id(true);
-                unset($_SESSION['csrf_token']);
-                $_SESSION['user_id']       = (int)$user['user_id'];
-                $_SESSION['username']      = $user['username'];
-                $_SESSION['name']          = $user['name'];
-                $_SESSION['role']          = $user['role'];
-                $_SESSION['db_mode']       = $targetMode;
-                $_SESSION['last_activity'] = time();
-                redirect(homePageFor($user['role']));
+            // Fallback to test DB if user was created inside DEMO DB without a _test suffix
+            if (!$user && $targetMode === 'live') {
+                try {
+                    $testPdo = db('test');
+                    purgeOldLoginAttempts($testPdo);
+                    $stmtTest = $testPdo->prepare(
+                        'SELECT user_id, username, password_hash, name, role, status FROM users WHERE username = :u LIMIT 1'
+                    );
+                    $stmtTest->execute([':u' => $username]);
+                    $testUser = $stmtTest->fetch();
+                    if ($testUser) {
+                        $targetMode = 'test';
+                        setActiveDbMode('test');
+                        $pdo = $testPdo;
+                        if (isLoginRateLimited($pdo, $username, $ip)) {
+                            $error = t('login_locked');
+                        } else {
+                            $user = $testUser;
+                        }
+                    }
+                } catch (Throwable $ignore) {
+                    // Demo DB not configured or unavailable; proceed with normal check
+                }
             }
 
-            recordFailedLogin($pdo, $username, $ip);
-            $error = t('login_failed');
+            if ($error === '') {
+                $passwordOk = password_verify($password, $user ? $user['password_hash'] : LOGIN_DUMMY_HASH);
+
+                if ($user && (int)$user['status'] === 1 && $passwordOk) {
+                    clearLoginAttempts($pdo, $username);
+                    session_regenerate_id(true);
+                    unset($_SESSION['csrf_token']);
+                    $_SESSION['user_id']       = (int)$user['user_id'];
+                    $_SESSION['username']      = $user['username'];
+                    $_SESSION['name']          = $user['name'];
+                    $_SESSION['role']          = $user['role'];
+                    $_SESSION['db_mode']       = $targetMode;
+                    $_SESSION['last_activity'] = time();
+                    redirect(homePageFor($user['role']));
+                }
+
+                recordFailedLogin($pdo, $username, $ip);
+                $error = t('login_failed');
+            }
         }
     }
 }
