@@ -44,6 +44,7 @@ function sortLinkPerf(string $col, string $label, string $currentSort, string $c
     return '<th class="p-3.5 ' . $alignClass . '"><a href="' . e($url) . '" class="hover:text-[#1B4D3E] font-bold whitespace-nowrap">' . e($label) . '<span class="text-[10px] text-gray-400">' . $arrow . '</span></a></th>';
 }
 
+$printPeriodLabel = date('d/m/Y', strtotime($fromDate)) . ' s/d ' . date('d/m/Y', strtotime($toDate));
 include __DIR__ . '/includes/layout_header.php';
 ?>
 
