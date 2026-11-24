@@ -175,16 +175,16 @@ include __DIR__ . '/includes/layout_header.php';
             <table class="w-full text-left border-collapse text-sm">
                 <thead>
                     <tr class="bg-[#F8F7F4] border-b border-[#E6E4DD] text-[11px] font-bold uppercase tracking-wider text-gray-500">
-                        <th class="py-3.5 px-4">Foto</th>
-                        <th class="py-3.5 px-4">Nama Menu</th>
-                        <th class="py-3.5 px-4">Kategori</th>
-                        <th class="py-3.5 px-4 text-right">Harga Jual</th>
-                        <th class="py-3.5 px-4 text-right">HPP (Modal)</th>
-                        <th class="py-3.5 px-4 text-right">Margin</th>
-                        <th class="py-3.5 px-4 text-center">Pilihan</th>
-                        <th class="py-3.5 px-4 text-center">Ketersediaan</th>
-                        <th class="py-3.5 px-4 text-center">Status</th>
-                        <th class="py-3.5 px-4 text-right">Aksi</th>
+                        <th class="py-3.5 px-2.5">Foto</th>
+                        <th class="py-3.5 px-2.5">Nama Menu</th>
+                        <th class="py-3.5 px-2.5">Kategori</th>
+                        <th class="py-3.5 px-2.5 text-right">Harga Jual</th>
+                        <th class="py-3.5 px-2.5 text-right">HPP (Modal)</th>
+                        <th class="py-3.5 px-2.5 text-right">Margin</th>
+                        <th class="py-3.5 px-2.5 text-center">Pilihan</th>
+                        <th class="py-3.5 px-2.5 text-center">Ketersediaan</th>
+                        <th class="py-3.5 px-2.5 text-center">Status</th>
+                        <th class="py-3.5 px-2.5 text-right">Aksi</th>
                     </tr>
                 </thead>
                 <tbody id="menu-table-body" class="divide-y divide-gray-100">
@@ -219,7 +219,7 @@ include __DIR__ . '/includes/layout_header.php';
                         data-name="<?= e(mb_strtolower($m['name'])) ?>"
                         data-category="<?= e($m['category']) ?>"
                         data-status="<?= (int)$m['status'] ?>">
-                        <td class="py-3.5 px-4">
+                        <td class="py-3.5 px-2.5">
                             <?php if ($photoSrc !== ''): ?>
                                 <img src="<?= e($photoSrc) ?>" alt="<?= e($m['name']) ?>"
                                     class="w-12 h-12 rounded-xl object-cover border border-gray-200">
@@ -229,7 +229,7 @@ include __DIR__ . '/includes/layout_header.php';
                                 </div>
                             <?php endif; ?>
                         </td>
-                        <td class="py-3.5 px-4">
+                        <td class="py-3.5 px-2.5">
                             <div class="font-extrabold text-[#1E293B]"><?= e($m['name']) ?></div>
                             <div class="text-[11px] font-mono text-gray-400"><?= e($skuCode) ?></div>
                             <?php if ($hasBrokenMandatory): ?>
@@ -238,20 +238,20 @@ include __DIR__ . '/includes/layout_header.php';
                                 </span>
                             <?php endif; ?>
                         </td>
-                        <td class="py-3.5 px-4">
-                            <span class="bg-[#F8F7F4] border border-gray-200 text-gray-700 text-xs font-bold px-2.5 py-1 rounded-full">
+                        <td class="py-3.5 px-2.5">
+                            <span class="whitespace-nowrap bg-[#F8F7F4] border border-gray-200 text-gray-700 text-xs font-bold px-2.5 py-1 rounded-full">
                                 <?= e($m['category']) ?>
                             </span>
                         </td>
-                        <td class="py-3.5 px-4 text-right font-extrabold text-[#1E293B]"><?= e(formatRupiah($price)) ?></td>
-                        <td class="py-3.5 px-4 text-right text-gray-500 font-medium"><?= e(formatRupiah($cost)) ?></td>
-                        <td class="py-3.5 px-4 text-right">
+                        <td class="py-3.5 px-2.5 text-right whitespace-nowrap font-extrabold text-[#1E293B]"><?= e(formatRupiah($price)) ?></td>
+                        <td class="py-3.5 px-2.5 text-right whitespace-nowrap text-gray-500 font-medium"><?= e(formatRupiah($cost)) ?></td>
+                        <td class="py-3.5 px-2.5 text-right whitespace-nowrap">
                             <div class="font-extrabold <?= $margin < 0 ? 'text-red-600' : 'text-[#1B4D3E]' ?>"><?= e(formatRupiah($margin)) ?></div>
                             <div class="text-[11px] font-bold <?= $margin < 0 ? 'text-red-500' : 'text-emerald-600' ?>"><?= number_format($marginPct, 1, ',', '.') ?>%</div>
                         </td>
-                        <td class="py-3.5 px-4 text-center">
+                        <td class="py-3.5 px-2.5 text-center">
                             <?php if (count($groups) > 0): ?>
-                                <span class="inline-block bg-emerald-100 text-[#1B4D3E] text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
+                                <span class="inline-block whitespace-nowrap bg-emerald-100 text-[#1B4D3E] text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
                                     <?= count($groups) ?> Grup
                                 </span>
                                 <div class="text-[10px] text-gray-400 truncate max-w-[110px] mx-auto mt-0.5"><?= e(implode(', ', $groupNames)) ?></div>
@@ -259,20 +259,20 @@ include __DIR__ . '/includes/layout_header.php';
                                 <span class="text-xs text-gray-300">--</span>
                             <?php endif; ?>
                         </td>
-                        <td class="py-3.5 px-4 text-center">
+                        <td class="py-3.5 px-2.5 text-center">
                             <button type="button"
-                                class="btn-toggle-avail px-3 py-1 rounded-full text-xs font-extrabold transition <?= (int)$m['available'] === 1 ? 'bg-emerald-100 text-[#1B4D3E] hover:bg-emerald-200' : 'bg-red-100 text-red-700 hover:bg-red-200' ?>"
+                                class="btn-toggle-avail whitespace-nowrap px-3 py-1 rounded-full text-xs font-extrabold transition <?= (int)$m['available'] === 1 ? 'bg-emerald-100 text-[#1B4D3E] hover:bg-emerald-200' : 'bg-red-100 text-red-700 hover:bg-red-200' ?>"
                                 data-menu-id="<?= $mid ?>"
                                 data-available="<?= (int)$m['available'] ?>">
                                 &bull; <?= (int)$m['available'] === 1 ? 'Tersedia' : 'Habis' ?>
                             </button>
                         </td>
-                        <td class="py-3.5 px-4 text-center">
-                            <span class="px-2.5 py-1 rounded-full text-xs font-bold <?= (int)$m['status'] === 1 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-gray-200 text-gray-600' ?>">
+                        <td class="py-3.5 px-2.5 text-center">
+                            <span class="whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-bold <?= (int)$m['status'] === 1 ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-gray-200 text-gray-600' ?>">
                                 &bull; <?= (int)$m['status'] === 1 ? 'Aktif' : 'Nonaktif' ?>
                             </span>
                         </td>
-                        <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1">
+                        <td class="py-3.5 px-2.5 text-right whitespace-nowrap space-x-1">
                             <button type="button"
                                 class="btn-manage-modifiers px-2.5 py-1.5 rounded-lg bg-orange-50 hover:bg-orange-100 text-[#9E3B1B] text-xs font-extrabold border border-orange-200"
                                 data-menu-id="<?= $mid ?>"
@@ -333,7 +333,7 @@ include __DIR__ . '/includes/layout_header.php';
                         <span>Kategori <span class="text-red-600">*</span></span>
                         <span class="text-gray-400 font-normal">Maksimal 30 karakter</span>
                     </div>
-                    <input type="text" name="category" id="form-category" list="category-list" required maxlength="30" value="Makanan"
+                    <input type="text" name="category" id="form-category" list="category-list" autocomplete="off" required maxlength="30" value="Makanan"
                         class="w-full bg-[#F8F7F4] border border-gray-300 rounded-xl px-3.5 py-2.5 text-sm font-semibold focus:bg-white focus:ring-2 focus:ring-[#1B4D3E] focus:outline-none">
                     <datalist id="category-list">
                         <?php foreach ($categories as $cat): ?>
@@ -444,6 +444,16 @@ include __DIR__ . '/includes/layout_header.php';
 
 <script>
 const GROUPS_BY_MENU = <?= json_encode($groupsByMenu, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
+
+function escHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
 
 document.addEventListener('DOMContentLoaded', function () {
     const searchInput = document.getElementById('filter-search');
@@ -570,17 +580,32 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
+    // --- Modifier Management Modal (Stay-open + Inline Edit for Groups & Items) ---
     const modModal = document.getElementById('modifier-manage-modal');
     const modGroupsList = document.getElementById('mod-groups-list');
-    let currentModMenuId = null;
+    let currentModMenu = { id: null, name: '', price: 0, cost: 0 };
+    let modModalDirty = false;
 
-    function renderModifierGroups(menuId, menuName, menuPrice, menuCost) {
-        currentModMenuId = Number(menuId);
-        document.getElementById('mod-menu-id').value = currentModMenuId;
-        const groups = GROUPS_BY_MENU[currentModMenuId] || [];
-        document.getElementById('mod-modal-title').textContent = 'KELOLA PILIHAN & MODIFIERS: ' + (menuName || '');
+    function closeModifierModal() {
+        modModal.classList.add('hidden');
+        if (modModalDirty) {
+            location.reload();
+        }
+    }
+
+    function applyUpdatedGroups(groups, toastMsg) {
+        GROUPS_BY_MENU[currentModMenu.id] = groups || [];
+        modModalDirty = true;
+        renderModifierGroups();
+        if (toastMsg) showToast(toastMsg, 'success');
+    }
+
+    function renderModifierGroups() {
+        const groups = GROUPS_BY_MENU[currentModMenu.id] || [];
+        document.getElementById('mod-menu-id').value = currentModMenu.id;
+        document.getElementById('mod-modal-title').textContent = 'KELOLA PILIHAN & MODIFIERS: ' + (currentModMenu.name || '');
         document.getElementById('mod-modal-subtitle').textContent =
-            `Harga Dasar: ${formatRupiah(Number(menuPrice || 0))} | HPP: ${formatRupiah(Number(menuCost || 0))} • ${groups.length}/5 Grup Terpakai`;
+            `Harga Dasar: ${formatRupiah(Number(currentModMenu.price || 0))} | HPP: ${formatRupiah(Number(currentModMenu.cost || 0))} • ${groups.length}/5 Grup Terpakai`;
 
         if (groups.length === 0) {
             modGroupsList.innerHTML = '<p class="text-sm text-gray-500 text-center py-6 bg-[#F8F7F4] rounded-xl">Belum ada grup opsi untuk menu ini.</p>';
@@ -596,35 +621,89 @@ document.addEventListener('DOMContentLoaded', function () {
                 : '';
 
             const itemsRows = (g.items || []).map(item => `
-                <div class="flex flex-wrap items-center justify-between gap-2 py-2.5 px-3 bg-[#F8F7F4] rounded-xl text-xs">
-                    <div class="font-bold text-gray-800">${item.name}</div>
-                    <div class="flex items-center gap-3">
-                        <span>Harga Tambahan: <strong>+${formatRupiah(item.extra_price)}</strong></span>
-                        <span class="text-gray-500">HPP: +${formatRupiah(item.extra_cost)}</span>
-                        <button type="button" class="btn-item-avail px-2.5 py-0.5 rounded-full font-extrabold ${Number(item.available) === 1 ? 'bg-emerald-100 text-[#1B4D3E]' : 'bg-red-100 text-red-700'}"
-                            data-item='${JSON.stringify(item).replace(/'/g, "&#39;")}'>
-                            ${Number(item.available) === 1 ? 'Tersedia' : 'Habis'}
-                        </button>
-                        <button type="button" class="btn-delete-item text-red-600 hover:underline font-bold"
-                            data-modifier-id="${item.modifier_id}">&#128465; Hapus</button>
+                <div class="bg-[#F8F7F4] rounded-xl px-3 py-2.5 text-xs space-y-2" data-item-wrapper="${item.modifier_id}">
+                    <div class="flex flex-wrap items-center justify-between gap-2 item-view-row">
+                        <div class="font-bold text-gray-800">${escHtml(item.name)}</div>
+                        <div class="flex items-center gap-2.5 flex-wrap">
+                            <span>Harga Tambahan: <strong>+${formatRupiah(item.extra_price)}</strong></span>
+                            <span class="text-gray-500">HPP: +${formatRupiah(item.extra_cost)}</span>
+                            <button type="button" class="btn-item-avail px-2.5 py-0.5 rounded-full font-extrabold ${Number(item.available) === 1 ? 'bg-emerald-100 text-[#1B4D3E]' : 'bg-red-100 text-red-700'}"
+                                data-item='${escHtml(JSON.stringify(item))}'>
+                                ${Number(item.available) === 1 ? 'Tersedia' : 'Habis'}
+                            </button>
+                            <button type="button" class="btn-toggle-edit-item text-[#1B4D3E] hover:underline font-bold"
+                                data-modifier-id="${item.modifier_id}">&#9998; Ubah</button>
+                            <button type="button" class="btn-delete-item text-red-600 hover:underline font-bold"
+                                data-modifier-id="${item.modifier_id}">&#128465; Hapus</button>
+                        </div>
                     </div>
+                    <form class="form-edit-item hidden flex flex-wrap items-end gap-2 pt-2 border-t border-gray-200"
+                          data-modifier-id="${item.modifier_id}" data-available="${Number(item.available)}">
+                        <div class="flex-1 min-w-[140px]">
+                            <label class="block text-[10px] font-bold text-gray-500 mb-0.5">Nama Pilihan</label>
+                            <input type="text" name="name" required maxlength="60" value="${escHtml(item.name)}"
+                                class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <div class="w-24">
+                            <label class="block text-[10px] font-bold text-gray-500 mb-0.5">+Harga (Rp)</label>
+                            <input type="number" name="extra_price" required min="0" value="${Number(item.extra_price)}"
+                                class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <div class="w-24">
+                            <label class="block text-[10px] font-bold text-gray-500 mb-0.5">+HPP (Rp)</label>
+                            <input type="number" name="extra_cost" required min="0" value="${Number(item.extra_cost)}"
+                                class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <div class="flex gap-1.5">
+                            <button type="submit" class="bg-[#1B4D3E] hover:bg-[#153d31] text-white text-xs font-bold px-3 py-1.5 rounded-lg">Simpan</button>
+                            <button type="button" class="btn-cancel-edit-item bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-lg">Batal</button>
+                        </div>
+                    </form>
                 </div>
             `).join('');
 
             return `
-                <div class="border border-[#E6E4DD] rounded-2xl p-4 space-y-3 bg-white shadow-sm">
-                    <div class="flex items-center justify-between">
+                <div class="border border-[#E6E4DD] rounded-2xl p-4 space-y-3 bg-white shadow-sm" data-group-wrapper="${g.group_id}">
+                    <div class="flex items-center justify-between gap-2 flex-wrap">
                         <div class="flex items-center gap-2 flex-wrap">
                             <span class="w-6 h-6 rounded-full bg-[#1B4D3E] text-white text-xs font-extrabold flex items-center justify-center">${idx + 1}</span>
-                            <span class="font-extrabold text-sm text-[#1E293B]">GRUP ${idx + 1}: ${g.name}</span>
+                            <span class="font-extrabold text-sm text-[#1E293B]">GRUP ${idx + 1}: ${escHtml(g.name)}</span>
                             <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700">${g.type === 'single' ? 'Single Choice (Pilih 1)' : 'Multi Choice (Bebas)'}</span>
                             <span class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full ${Number(g.is_required) === 1 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-600'}">
                                 ${Number(g.is_required) === 1 ? 'Wajib Diisi' : 'Opsional'}
                             </span>
                         </div>
-                        <button type="button" class="btn-delete-group text-xs text-red-600 hover:underline font-bold"
-                            data-group-id="${g.group_id}">Hapus Grup</button>
+                        <div class="flex items-center gap-3">
+                            <button type="button" class="btn-toggle-edit-group text-xs text-[#1B4D3E] hover:underline font-bold"
+                                data-group-id="${g.group_id}">&#9998; Ubah Grup</button>
+                            <button type="button" class="btn-delete-group text-xs text-red-600 hover:underline font-bold"
+                                data-group-id="${g.group_id}">Hapus Grup</button>
+                        </div>
                     </div>
+
+                    <form class="form-edit-group hidden bg-[#F8F7F4] border border-gray-200 rounded-xl p-3 flex flex-wrap items-end gap-2.5" data-group-id="${g.group_id}">
+                        <div class="flex-1 min-w-[160px]">
+                            <label class="block text-[11px] font-bold text-gray-600 mb-0.5">Nama Grup</label>
+                            <input type="text" name="name" required maxlength="60" value="${escHtml(g.name)}"
+                                class="w-full bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-gray-600 mb-0.5">Tipe</label>
+                            <select name="type" class="bg-white border border-gray-300 rounded-lg px-2.5 py-1.5 text-xs font-semibold">
+                                <option value="single" ${g.type === 'single' ? 'selected' : ''}>Single Choice (Pilih 1)</option>
+                                <option value="multiple" ${g.type === 'multiple' ? 'selected' : ''}>Multi Choice (Bebas)</option>
+                            </select>
+                        </div>
+                        <label class="inline-flex items-center gap-1.5 text-xs font-bold text-gray-700 pb-1.5 cursor-pointer">
+                            <input type="checkbox" name="is_required" value="1" ${Number(g.is_required) === 1 ? 'checked' : ''} class="rounded text-[#1B4D3E] w-4 h-4">
+                            <span>Wajib Diisi</span>
+                        </label>
+                        <div class="flex gap-1.5">
+                            <button type="submit" class="bg-[#1B4D3E] hover:bg-[#153d31] text-white text-xs font-bold px-3 py-1.5 rounded-lg">Simpan</button>
+                            <button type="button" class="btn-cancel-edit-group bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold px-2.5 py-1.5 rounded-lg">Batal</button>
+                        </div>
+                    </form>
+
                     ${warnBanner}
                     <div class="space-y-1.5">
                         ${itemsRows || '<p class="text-xs text-gray-400">Belum ada item opsi.</p>'}
@@ -653,21 +732,57 @@ document.addEventListener('DOMContentLoaded', function () {
             `;
         }).join('');
 
-        modGroupsList.querySelectorAll('.btn-delete-group').forEach(btn => {
-            btn.addEventListener('click', async () => {
-                if (!confirm('Hapus grup opsi ini? Transaksi lama tidak terpengaruh.')) return;
+        // Toggle & submit inline Group Edit
+        modGroupsList.querySelectorAll('.btn-toggle-edit-group').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const wrapper = btn.closest('[data-group-wrapper]');
+                const form = wrapper.querySelector('.form-edit-group');
+                form.classList.toggle('hidden');
+            });
+        });
+        modGroupsList.querySelectorAll('.btn-cancel-edit-group').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.closest('.form-edit-group').classList.add('hidden');
+            });
+        });
+        modGroupsList.querySelectorAll('.form-edit-group').forEach(form => {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
                 try {
-                    await apiFetch('api_menu.php', {
+                    const res = await apiFetch('api_menu.php', {
                         method: 'POST',
-                        body: JSON.stringify({ action: 'group_delete', group_id: Number(btn.dataset.groupId) })
+                        body: JSON.stringify({
+                            action: 'group_update',
+                            group_id: Number(form.dataset.groupId),
+                            name: form.querySelector('[name="name"]').value,
+                            type: form.querySelector('[name="type"]').value,
+                            is_required: form.querySelector('[name="is_required"]').checked ? 1 : 0
+                        })
                     });
-                    location.reload();
+                    applyUpdatedGroups(res.groups, res.message || 'Grup diperbarui.');
                 } catch (err) {
                     showToast(err.message, 'error');
                 }
             });
         });
 
+        // Delete Group
+        modGroupsList.querySelectorAll('.btn-delete-group').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (!confirm('Hapus grup opsi ini? Transaksi lama tidak terpengaruh.')) return;
+                try {
+                    const res = await apiFetch('api_menu.php', {
+                        method: 'POST',
+                        body: JSON.stringify({ action: 'group_delete', group_id: Number(btn.dataset.groupId) })
+                    });
+                    applyUpdatedGroups(res.groups, res.message || 'Grup dihapus.');
+                } catch (err) {
+                    showToast(err.message, 'error');
+                }
+            });
+        });
+
+        // Add Item
         modGroupsList.querySelectorAll('.form-add-item').forEach(form => {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -676,7 +791,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const extraPrice = Number(form.querySelector('[name="extra_price"]').value || 0);
                 const extraCost = Number(form.querySelector('[name="extra_cost"]').value || 0);
                 try {
-                    await apiFetch('api_menu.php', {
+                    const res = await apiFetch('api_menu.php', {
                         method: 'POST',
                         body: JSON.stringify({
                             action: 'item_create',
@@ -687,18 +802,53 @@ document.addEventListener('DOMContentLoaded', function () {
                             available: 1
                         })
                     });
-                    location.reload();
+                    applyUpdatedGroups(res.groups, res.message || 'Item opsi ditambahkan.');
                 } catch (err) {
                     showToast(err.message, 'error');
                 }
             });
         });
 
+        // Toggle & submit inline Item Edit
+        modGroupsList.querySelectorAll('.btn-toggle-edit-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const wrapper = btn.closest('[data-item-wrapper]');
+                wrapper.querySelector('.form-edit-item').classList.toggle('hidden');
+            });
+        });
+        modGroupsList.querySelectorAll('.btn-cancel-edit-item').forEach(btn => {
+            btn.addEventListener('click', () => {
+                btn.closest('.form-edit-item').classList.add('hidden');
+            });
+        });
+        modGroupsList.querySelectorAll('.form-edit-item').forEach(form => {
+            form.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                try {
+                    const res = await apiFetch('api_menu.php', {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            action: 'item_update',
+                            modifier_id: Number(form.dataset.modifierId),
+                            name: form.querySelector('[name="name"]').value,
+                            extra_price: Number(form.querySelector('[name="extra_price"]').value || 0),
+                            extra_cost: Number(form.querySelector('[name="extra_cost"]').value || 0),
+                            available: Number(form.dataset.available)
+                        })
+                    });
+                    applyUpdatedGroups(res.groups, res.message || 'Item opsi diperbarui.');
+                } catch (err) {
+                    showToast(err.message, 'error');
+                }
+            });
+        });
+
+        // Toggle Item Availability
         modGroupsList.querySelectorAll('.btn-item-avail').forEach(btn => {
             btn.addEventListener('click', async () => {
                 const item = JSON.parse(btn.dataset.item);
                 try {
-                    await apiFetch('api_menu.php', {
+                    const res = await apiFetch('api_menu.php', {
                         method: 'POST',
                         body: JSON.stringify({
                             action: 'item_update',
@@ -709,22 +859,23 @@ document.addEventListener('DOMContentLoaded', function () {
                             available: Number(item.available) === 1 ? 0 : 1
                         })
                     });
-                    location.reload();
+                    applyUpdatedGroups(res.groups, res.message || 'Status opsi diperbarui.');
                 } catch (err) {
                     showToast(err.message, 'error');
                 }
             });
         });
 
+        // Delete Item
         modGroupsList.querySelectorAll('.btn-delete-item').forEach(btn => {
             btn.addEventListener('click', async () => {
                 if (!confirm('Hapus item opsi ini? Transaksi lama tidak terpengaruh.')) return;
                 try {
-                    await apiFetch('api_menu.php', {
+                    const res = await apiFetch('api_menu.php', {
                         method: 'POST',
                         body: JSON.stringify({ action: 'item_delete', modifier_id: Number(btn.dataset.modifierId) })
                     });
-                    location.reload();
+                    applyUpdatedGroups(res.groups, res.message || 'Item opsi dihapus.');
                 } catch (err) {
                     showToast(err.message, 'error');
                 }
@@ -734,27 +885,39 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.querySelectorAll('.btn-manage-modifiers').forEach(btn => {
         btn.addEventListener('click', () => {
-            renderModifierGroups(btn.dataset.menuId, btn.dataset.menuName, btn.dataset.menuPrice, btn.dataset.menuCost);
+            currentModMenu = {
+                id: Number(btn.dataset.menuId),
+                name: btn.dataset.menuName || '',
+                price: Number(btn.dataset.menuPrice || 0),
+                cost: Number(btn.dataset.menuCost || 0)
+            };
+            modModalDirty = false;
+            renderModifierGroups();
             modModal.classList.remove('hidden');
         });
     });
 
-    document.getElementById('mod-modal-close').addEventListener('click', () => modModal.classList.add('hidden'));
+    document.getElementById('mod-modal-close').addEventListener('click', closeModifierModal);
+    modModal.addEventListener('click', (e) => {
+        if (e.target === modModal) closeModifierModal();
+    });
 
     document.getElementById('form-add-group').addEventListener('submit', async (e) => {
         e.preventDefault();
         try {
-            await apiFetch('api_menu.php', {
+            const res = await apiFetch('api_menu.php', {
                 method: 'POST',
                 body: JSON.stringify({
                     action: 'group_create',
-                    menu_id: currentModMenuId,
+                    menu_id: currentModMenu.id,
                     name: document.getElementById('new-group-name').value,
                     type: document.getElementById('new-group-type').value,
                     is_required: document.getElementById('new-group-req').checked ? 1 : 0
                 })
             });
-            location.reload();
+            document.getElementById('new-group-name').value = '';
+            document.getElementById('new-group-req').checked = false;
+            applyUpdatedGroups(res.groups, res.message || 'Grup opsi ditambahkan.');
         } catch (err) {
             showToast(err.message, 'error');
         }
