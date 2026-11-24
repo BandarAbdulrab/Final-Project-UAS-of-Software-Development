@@ -75,24 +75,25 @@ $totalRows = (int)$stmtCount->fetchColumn();
 $totalPages = max(1, (int)ceil($totalRows / $limit));
 
 $stmtSum = $pdo->prepare(
-    "SELECT 
+    "SELECT
         COALESCE(SUM(CASE WHEN t.status <> 'void' THEN 1 ELSE 0 END), 0) AS valid_count,
         COALESCE(SUM(CASE WHEN t.status = 'void' THEN 1 ELSE 0 END), 0) AS void_count,
         COALESCE(SUM(CASE WHEN t.status <> 'void' THEN t.total ELSE 0 END), 0) AS total_revenue,
         COALESCE(SUM(CASE WHEN t.status <> 'void' THEN t.total_cost ELSE 0 END), 0) AS total_cost,
-        COALESCE(SUM(CASE WHEN t.status <> 'void' THEN t.gross_profit ELSE 0 END), 0) AS total_gross_profit
-     FROM transactions t 
+        COALESCE(SUM(CASE WHEN t.status <> 'void' THEN t.gross_profit ELSE 0 END), 0) AS total_gross_profit,
+        COALESCE(SUM(CASE WHEN t.status <> 'void' THEN t.alloc_profit ELSE 0 END), 0) AS total_net_profit
+     FROM transactions t
      WHERE $whereSql"
 );
 $stmtSum->execute($params);
 $summary = $stmtSum->fetch();
 
-$sql = "SELECT t.*, u.name AS cashier_name, ub.username AS voided_by_user, ub.name AS voided_by_name 
-        FROM transactions t 
-        LEFT JOIN users u ON u.user_id = t.user_id 
-        LEFT JOIN users ub ON ub.user_id = t.voided_by 
-        WHERE $whereSql 
-        ORDER BY $orderBySql $dirSql, t.transaction_id DESC 
+$sql = "SELECT t.*, u.name AS cashier_name, ub.username AS voided_by_user, ub.name AS voided_by_name
+        FROM transactions t
+        LEFT JOIN users u ON u.user_id = t.user_id
+        LEFT JOIN users ub ON ub.user_id = t.voided_by
+        WHERE $whereSql
+        ORDER BY $orderBySql $dirSql, t.transaction_id DESC
         LIMIT :limit OFFSET :offset";
 
 $stmtTx = $pdo->prepare($sql);
@@ -140,12 +141,16 @@ function sortThHistory(string $col, string $label, string $currentSort, string $
     $indicator = $currentSort === $col ? ($currentDir === 'asc' ? ' &#9650;' : ' &#9660;') : ' &#8693;';
     $q = array_merge($baseParams, ['sort' => $col, 'dir' => $nextDir]);
     $alignCls = $align === 'right' ? 'text-right' : ($align === 'center' ? 'text-center' : 'text-left');
-    return '<th class="py-3.5 px-4 ' . $alignCls . '"><a href="history.php?' . e(http_build_query($q)) . '" class="hover:text-[#1B4D3E] whitespace-nowrap">' . e($label) . '<span class="text-[10px] text-gray-400">' . $indicator . '</span></a></th>';
+    return '<th class="py-3.5 px-2.5 ' . $alignCls . '"><a href="history.php?' . e(http_build_query($q)) . '" class="hover:text-[#1B4D3E] whitespace-nowrap">' . e($label) . '<span class="text-[10px] text-gray-400">' . $indicator . '</span></a></th>';
 }
 
 $csvQueryBase = http_build_query(array_merge($baseQuery, ['report' => 'history', 'sort' => $sort, 'dir' => $dir]));
+$colCount = $isAdmin ? 12 : 8;
 
 $pageTitle = 'Riwayat Transaksi Penjualan - Kedai Paradise';
+$printPeriodLabel = $isAdmin
+    ? (date('d/m/Y', strtotime($fromDate)) . ' s/d ' . date('d/m/Y', strtotime($toDate)))
+    : (date('d/m/Y') . ' (Hari Ini)');
 include __DIR__ . '/includes/layout_header.php';
 ?>
 
@@ -238,14 +243,15 @@ include __DIR__ . '/includes/layout_header.php';
                         <?php if ($isAdmin): ?>
                             <?= sortThHistory('total_cost', 'HPP', $sort, $dir, $baseQuery, 'right') ?>
                             <?= sortThHistory('gross_profit', 'Laba Kotor', $sort, $dir, $baseQuery, 'right') ?>
+                            <?= sortThHistory('alloc_profit', 'Laba Bersih', $sort, $dir, $baseQuery, 'right') ?>
                             <?= sortThHistory('cashier', 'Kasir', $sort, $dir, $baseQuery, 'center') ?>
                         <?php endif; ?>
-                        <th class="py-3.5 px-4 text-right print:hidden">Aksi</th>
+                        <th class="py-3.5 px-2.5 text-right print:hidden">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     <?php if (empty($transactions)): ?>
-                        <tr><td colspan="<?= $isAdmin ? '11' : '8' ?>" class="py-10 text-center text-gray-400 text-sm">Tidak ada transaksi ditemukan pada periode ini.</td></tr>
+                        <tr><td colspan="<?= $colCount ?>" class="py-10 text-center text-gray-400 text-sm">Tidak ada transaksi ditemukan pada periode ini.</td></tr>
                     <?php else: ?>
                         <?php foreach ($transactions as $tx):
                             $tid = (int)$tx['transaction_id'];
@@ -264,29 +270,29 @@ include __DIR__ . '/includes/layout_header.php';
                             }
                         ?>
                         <tr class="hover:bg-[#F8F7F4]/50 <?= $isVoid ? 'bg-red-50/20 text-gray-400' : '' ?>">
-                            <td class="py-3.5 px-4 font-extrabold text-[#1E293B]">
+                            <td class="py-3.5 px-2.5 font-extrabold text-[#1E293B] whitespace-nowrap">
                                 #<?= str_pad((string)$tx['order_no'], 3, '0', STR_PAD_LEFT) ?>
                             </td>
-                            <td class="py-3.5 px-4 whitespace-nowrap">
+                            <td class="py-3.5 px-2.5 whitespace-nowrap">
                                 <div class="font-semibold text-gray-800"><?= e(date('d/m H:i', strtotime($tx['date']))) ?> WIB</div>
                                 <div class="text-[11px] <?= $isVoid ? 'text-red-600 font-semibold' : 'text-gray-400' ?>">
                                     <?= $isVoid ? 'Dibatalkan' : ($tx['order_date'] === date('Y-m-d') ? 'Hari ini' : e($tx['order_date'])) ?>
                                 </div>
                             </td>
-                            <td class="py-3.5 px-4 text-center">
+                            <td class="py-3.5 px-2.5 text-center whitespace-nowrap">
                                 <span class="inline-block bg-[#F8F7F4] border border-gray-200 text-gray-800 font-extrabold text-xs px-2.5 py-1 rounded-lg">
                                     <?= $tx['table_no'] === 'TA' ? 'TA' : str_pad((string)$tx['table_no'], 2, '0', STR_PAD_LEFT) ?>
                                 </span>
                             </td>
-                            <td class="py-3.5 px-4">
+                            <td class="py-3.5 px-2.5 whitespace-nowrap">
                                 <span class="px-2.5 py-1 rounded-lg text-xs font-bold <?= $tx['method'] === 'cash' ? 'bg-emerald-50 text-[#1B4D3E]' : 'bg-orange-50 text-[#9E3B1B]' ?>">
                                     <?= $tx['method'] === 'cash' ? 'Tunai' : 'QRIS' ?>
                                 </span>
                             </td>
-                            <td class="py-3.5 px-4 text-right font-extrabold text-base <?= $isVoid ? 'line-through text-gray-400' : 'text-[#9E3B1B]' ?>">
+                            <td class="py-3.5 px-2.5 text-right whitespace-nowrap font-extrabold text-sm <?= $isVoid ? 'line-through text-gray-400' : 'text-[#9E3B1B]' ?>">
                                 <?= e(formatRupiah((int)$tx['total'])) ?>
                             </td>
-                            <td class="py-3.5 px-4 text-center">
+                            <td class="py-3.5 px-2.5 text-center whitespace-nowrap">
                                 <?php if ($tx['status'] === 'completed'): ?>
                                     <span class="bg-emerald-100 text-[#1B4D3E] text-xs font-bold px-2.5 py-1 rounded-full">&bull; Selesai</span>
                                 <?php elseif ($tx['status'] === 'processing'): ?>
@@ -295,31 +301,34 @@ include __DIR__ . '/includes/layout_header.php';
                                     <span class="bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full">&otimes; Dibatalkan</span>
                                 <?php endif; ?>
                             </td>
-                            <td class="py-3.5 px-4 text-center font-mono text-xs text-gray-500"><?= $durFormatted ?></td>
+                            <td class="py-3.5 px-2.5 text-center font-mono text-xs text-gray-500 whitespace-nowrap"><?= $durFormatted ?></td>
                             <?php if ($isAdmin): ?>
-                                <td class="py-3.5 px-4 text-right font-medium text-gray-600">
+                                <td class="py-3.5 px-2.5 text-right font-medium text-gray-600 whitespace-nowrap">
                                     <?= $isVoid ? '--' : e(formatRupiah((int)$tx['total_cost'])) ?>
                                 </td>
-                                <td class="py-3.5 px-4 text-right font-bold text-[#1B4D3E]">
+                                <td class="py-3.5 px-2.5 text-right font-bold text-[#1B4D3E] whitespace-nowrap">
                                     <?= $isVoid ? '--' : e(formatRupiah((int)$tx['gross_profit'])) ?>
                                 </td>
-                                <td class="py-3.5 px-4 text-center">
-                                    <span class="bg-[#1B4D3E] text-white text-[11px] font-bold px-2.5 py-0.5 rounded">
-                                        <?= e( strtok((string)($tx['cashier_name'] ?? 'Staff'), ' ') ) ?>
+                                <td class="py-3.5 px-2.5 text-right font-extrabold text-emerald-700 whitespace-nowrap">
+                                    <?= $isVoid ? '--' : e(formatRupiah((int)$tx['alloc_profit'])) ?>
+                                </td>
+                                <td class="py-3.5 px-2.5 text-center whitespace-nowrap">
+                                    <span class="bg-[#1B4D3E] text-white text-[11px] font-bold px-2 py-0.5 rounded">
+                                        <?= e(strtok((string)($tx['cashier_name'] ?? 'Staff'), ' ')) ?>
                                     </span>
                                 </td>
                             <?php endif; ?>
-                            <td class="py-3.5 px-4 text-right whitespace-nowrap space-x-1.5 print:hidden">
+                            <td class="py-3.5 px-2.5 text-right whitespace-nowrap space-x-1 print:hidden">
                                 <a href="receipt.php?id=<?= $tid ?>&reprint=1" target="_blank"
-                                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold shadow-sm">
+                                   class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-bold shadow-sm">
                                     &#128462; Struk
                                 </a>
                                 <?php if ($isAdmin && !$isVoid): ?>
-                                    <button type="button" class="btn-void-order inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold"
+                                    <button type="button" class="btn-void-order inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold"
                                         data-transaction-id="<?= $tid ?>"
                                         data-order-no="<?= str_pad((string)$tx['order_no'], 3, '0', STR_PAD_LEFT) ?>"
                                         data-table-no="<?= e($tx['table_no']) ?>"
-                                        data-method="<?= strtoupper(e($tx['method'])) ?>"
+                                        data-method="<?= $tx['method'] === 'cash' ? 'TUNAI' : 'QRIS' ?>"
                                         data-total="<?= e(formatRupiah((int)$tx['total'])) ?>"
                                         data-items="<?= e(implode(', ', $itemSummaryParts)) ?>">
                                         &oslash; Batal
@@ -331,7 +340,7 @@ include __DIR__ . '/includes/layout_header.php';
                         <!-- Sub-row: Menu Snapshot or Void Reason Banner -->
                         <?php if ($isVoid && !empty($tx['void_reason'])): ?>
                             <tr class="bg-red-50/70 text-xs">
-                                <td colspan="<?= $isAdmin ? '11' : '8' ?>" class="py-2.5 px-5 text-red-800">
+                                <td colspan="<?= $colCount ?>" class="py-2.5 px-5 text-red-800">
                                     <span class="font-extrabold uppercase">&#9888; Alasan Batal:</span>
                                     <span class="font-semibold"><?= e($tx['void_reason']) ?></span>
                                     <span class="text-gray-500 ml-2">(Dibatalkan oleh: <strong><?= e($tx['voided_by_user'] ?? $tx['voided_by_name'] ?? 'admin') ?></strong> pada <?= e(date('H:i', strtotime($tx['voided_at']))) ?> WIB)</span>
@@ -339,7 +348,7 @@ include __DIR__ . '/includes/layout_header.php';
                             </tr>
                         <?php elseif (!empty($orders)): ?>
                             <tr class="bg-[#FAF6F0] text-xs">
-                                <td colspan="<?= $isAdmin ? '11' : '8' ?>" class="py-2 px-5">
+                                <td colspan="<?= $colCount ?>" class="py-2 px-5">
                                     <span class="font-extrabold text-[#9E3B1B] uppercase mr-2">&#9432; Rincian Menu:</span>
                                     <?php foreach ($orders as $ord):
                                         $mods = $modsByOrder[(int)$ord['order_id']] ?? [];
@@ -384,7 +393,11 @@ include __DIR__ . '/includes/layout_header.php';
                     </div>
                     <div>
                         <span class="text-xs text-gray-500 mr-1">Total Laba Kotor:</span>
-                        <strong class="text-lg font-extrabold text-[#1B4D3E]"><?= formatRupiah((int)($summary['total_gross_profit'] ?? 0)) ?></strong>
+                        <strong class="text-base font-extrabold text-[#1B4D3E]"><?= formatRupiah((int)($summary['total_gross_profit'] ?? 0)) ?></strong>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500 mr-1">Total Laba Bersih:</span>
+                        <strong class="text-lg font-extrabold text-emerald-700"><?= formatRupiah((int)($summary['total_net_profit'] ?? 0)) ?></strong>
                     </div>
                 <?php endif; ?>
             </div>
