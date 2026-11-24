@@ -30,6 +30,59 @@ requireCsrf();
 $pdo = db();
 $action = trim((string)($_POST['action'] ?? ''));
 
+function fetchMenuModifierGroups(PDO $pdo, int $menuId): array
+{
+    $stmtG = $pdo->prepare(
+        'SELECT group_id, menu_id, name, type, is_required
+         FROM menu_modifier_groups
+         WHERE menu_id = :mid
+         ORDER BY group_id ASC'
+    );
+    $stmtG->execute([':mid' => $menuId]);
+    $groups = $stmtG->fetchAll();
+
+    if (empty($groups)) {
+        return [];
+    }
+
+    $gIds = array_map(static fn($g) => (int)$g['group_id'], $groups);
+    $in = implode(',', array_fill(0, count($gIds), '?'));
+    $stmtI = $pdo->prepare(
+        "SELECT modifier_id, group_id, name, extra_price, extra_cost, available
+         FROM menu_modifier_items
+         WHERE group_id IN ($in)
+         ORDER BY modifier_id ASC"
+    );
+    $stmtI->execute($gIds);
+
+    $itemsByGroup = [];
+    while ($item = $stmtI->fetch()) {
+        $gid = (int)$item['group_id'];
+        $itemsByGroup[$gid][] = [
+            'modifier_id' => (int)$item['modifier_id'],
+            'group_id'    => $gid,
+            'name'        => $item['name'],
+            'extra_price' => (int)$item['extra_price'],
+            'extra_cost'  => (int)$item['extra_cost'],
+            'available'   => (int)$item['available'],
+        ];
+    }
+
+    $result = [];
+    foreach ($groups as $g) {
+        $gid = (int)$g['group_id'];
+        $result[] = [
+            'group_id'    => $gid,
+            'menu_id'     => (int)$g['menu_id'],
+            'name'        => $g['name'],
+            'type'        => $g['type'],
+            'is_required' => (int)$g['is_required'],
+            'items'       => $itemsByGroup[$gid] ?? [],
+        ];
+    }
+    return $result;
+}
+
 try {
     switch ($action) {
         case 'menu_create': {
@@ -63,12 +116,12 @@ try {
                  VALUES (:name, :cat, :price, :cost, :photo, :avail, :status)'
             );
             $stmt->execute([
-                ':name' => $name,
-                ':cat' => $category,
-                ':price' => $price,
-                ':cost' => $costPrice,
-                ':photo' => $photoPath,
-                ':avail' => $available,
+                ':name'   => $name,
+                ':cat'    => $category,
+                ':price'  => $price,
+                ':cost'   => $costPrice,
+                ':photo'  => $photoPath,
+                ':avail'  => $available,
                 ':status' => $status,
             ]);
 
@@ -115,7 +168,7 @@ try {
             if (!empty($_FILES['photo']) && ($_FILES['photo']['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
                 $newPhoto = saveUploadedImage($_FILES['photo'], 'menu', 'menu', 1048576);
                 if (!empty($photoPath)) {
-                    $oldFull = __DIR__ . '/' . ltrim($photoPath, '/');
+                    $oldFull = __DIR__ . '/uploads/' . ltrim($photoPath, '/');
                     if (is_file($oldFull)) {
                         @unlink($oldFull);
                     }
@@ -130,14 +183,14 @@ try {
                  WHERE menu_id = :id'
             );
             $stmt->execute([
-                ':name' => $name,
-                ':cat' => $category,
-                ':price' => $price,
-                ':cost' => $costPrice,
-                ':photo' => $photoPath,
-                ':avail' => $available,
+                ':name'   => $name,
+                ':cat'    => $category,
+                ':price'  => $price,
+                ':cost'   => $costPrice,
+                ':photo'  => $photoPath,
+                ':avail'  => $available,
                 ':status' => $status,
-                ':id' => $menuId,
+                ':id'     => $menuId,
             ]);
 
             jsonResponse([
@@ -161,7 +214,7 @@ try {
 
             jsonResponse([
                 'success' => true,
-                'status' => $status,
+                'status'  => $status,
                 'message' => $status === 1 ? 'Menu diaktifkan.' : 'Menu dinonaktifkan.',
             ]);
         }
@@ -173,16 +226,17 @@ try {
             $isRequired = !empty($_POST['is_required']) ? 1 : 0;
 
             $groupId = createModifierGroup($pdo, [
-                'menu_id' => $menuId,
-                'name' => $name,
-                'type' => $type,
+                'menu_id'     => $menuId,
+                'name'        => $name,
+                'type'        => $type,
                 'is_required' => $isRequired,
             ]);
 
             jsonResponse([
-                'success' => true,
+                'success'  => true,
                 'group_id' => $groupId,
-                'message' => 'Grup opsi berhasil ditambahkan.',
+                'groups'   => fetchMenuModifierGroups($pdo, $menuId),
+                'message'  => 'Grup opsi berhasil ditambahkan.',
             ]);
         }
 
@@ -199,6 +253,13 @@ try {
                 jsonError('Tipe grup harus single atau multiple.', 400);
             }
 
+            $stmtFind = $pdo->prepare('SELECT menu_id FROM menu_modifier_groups WHERE group_id = :id LIMIT 1');
+            $stmtFind->execute([':id' => $groupId]);
+            $menuId = (int)$stmtFind->fetchColumn();
+            if ($menuId <= 0) {
+                jsonError('Grup opsi tidak ditemukan.', 404);
+            }
+
             $stmt = $pdo->prepare(
                 'UPDATE menu_modifier_groups
                  SET name = :name, type = :type, is_required = :req
@@ -207,12 +268,13 @@ try {
             $stmt->execute([
                 ':name' => $name,
                 ':type' => $type,
-                ':req' => $isRequired,
-                ':id' => $groupId,
+                ':req'  => $isRequired,
+                ':id'   => $groupId,
             ]);
 
             jsonResponse([
                 'success' => true,
+                'groups'  => fetchMenuModifierGroups($pdo, $menuId),
                 'message' => 'Grup opsi berhasil diperbarui.',
             ]);
         }
@@ -223,11 +285,19 @@ try {
                 jsonError('ID grup opsi tidak valid.', 400);
             }
 
+            $stmtFind = $pdo->prepare('SELECT menu_id FROM menu_modifier_groups WHERE group_id = :id LIMIT 1');
+            $stmtFind->execute([':id' => $groupId]);
+            $menuId = (int)$stmtFind->fetchColumn();
+            if ($menuId <= 0) {
+                jsonError('Grup opsi tidak ditemukan.', 404);
+            }
+
             $stmt = $pdo->prepare('DELETE FROM menu_modifier_groups WHERE group_id = :id');
             $stmt->execute([':id' => $groupId]);
 
             jsonResponse([
                 'success' => true,
+                'groups'  => fetchMenuModifierGroups($pdo, $menuId),
                 'message' => 'Grup opsi berhasil dihapus.',
             ]);
         }
@@ -240,17 +310,22 @@ try {
             $available = isset($_POST['available']) ? (!empty($_POST['available']) ? 1 : 0) : 1;
 
             $modifierId = createModifierItem($pdo, [
-                'group_id' => $groupId,
-                'name' => $name,
+                'group_id'    => $groupId,
+                'name'        => $name,
                 'extra_price' => $extraPrice,
-                'extra_cost' => $extraCost,
-                'available' => $available,
+                'extra_cost'  => $extraCost,
+                'available'   => $available,
             ]);
 
+            $stmtFind = $pdo->prepare('SELECT menu_id FROM menu_modifier_groups WHERE group_id = :id LIMIT 1');
+            $stmtFind->execute([':id' => $groupId]);
+            $menuId = (int)$stmtFind->fetchColumn();
+
             jsonResponse([
-                'success' => true,
+                'success'     => true,
                 'modifier_id' => $modifierId,
-                'message' => 'Item opsi berhasil ditambahkan.',
+                'groups'      => $menuId > 0 ? fetchMenuModifierGroups($pdo, $menuId) : [],
+                'message'     => 'Item opsi berhasil ditambahkan.',
             ]);
         }
 
@@ -265,21 +340,34 @@ try {
                 jsonError('Data item opsi tidak valid.', 400);
             }
 
+            $stmtFind = $pdo->prepare(
+                'SELECT g.menu_id
+                 FROM menu_modifier_items i
+                 JOIN menu_modifier_groups g ON g.group_id = i.group_id
+                 WHERE i.modifier_id = :id LIMIT 1'
+            );
+            $stmtFind->execute([':id' => $modifierId]);
+            $menuId = (int)$stmtFind->fetchColumn();
+            if ($menuId <= 0) {
+                jsonError('Item opsi tidak ditemukan.', 404);
+            }
+
             $stmt = $pdo->prepare(
                 'UPDATE menu_modifier_items
                  SET name = :name, extra_price = :price, extra_cost = :cost, available = :avail
                  WHERE modifier_id = :id'
             );
             $stmt->execute([
-                ':name' => $name,
+                ':name'  => $name,
                 ':price' => $extraPrice,
-                ':cost' => $extraCost,
+                ':cost'  => $extraCost,
                 ':avail' => $available,
-                ':id' => $modifierId,
+                ':id'    => $modifierId,
             ]);
 
             jsonResponse([
                 'success' => true,
+                'groups'  => fetchMenuModifierGroups($pdo, $menuId),
                 'message' => 'Item opsi berhasil diperbarui.',
             ]);
         }
@@ -290,11 +378,24 @@ try {
                 jsonError('ID item opsi tidak valid.', 400);
             }
 
+            $stmtFind = $pdo->prepare(
+                'SELECT g.menu_id
+                 FROM menu_modifier_items i
+                 JOIN menu_modifier_groups g ON g.group_id = i.group_id
+                 WHERE i.modifier_id = :id LIMIT 1'
+            );
+            $stmtFind->execute([':id' => $modifierId]);
+            $menuId = (int)$stmtFind->fetchColumn();
+            if ($menuId <= 0) {
+                jsonError('Item opsi tidak ditemukan.', 404);
+            }
+
             $stmt = $pdo->prepare('DELETE FROM menu_modifier_items WHERE modifier_id = :id');
             $stmt->execute([':id' => $modifierId]);
 
             jsonResponse([
                 'success' => true,
+                'groups'  => fetchMenuModifierGroups($pdo, $menuId),
                 'message' => 'Item opsi berhasil dihapus.',
             ]);
         }
