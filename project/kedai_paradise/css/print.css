@@ -43,6 +43,7 @@
     select,
     textarea,
     .no-print,
+    .print\:hidden,
     .btn,
     .pagination,
     .modal,
@@ -86,14 +87,16 @@
         gap: 8px;
     }
 
-    /* Expand main layout containers to full printable width */
+    /* Expand main layout containers and full-width print blocks */
     main,
     .container,
     .max-w-7xl,
     .max-w-6xl,
-    .overflow-x-auto {
+    .overflow-x-auto,
+    .print-full {
         max-width: 100% !important;
         width: 100% !important;
+        grid-column: 1 / -1 !important;
         margin: 0 !important;
         padding: 0 !important;
         overflow: visible !important;
@@ -112,8 +115,9 @@
         display: table-header-group !important;
     }
 
+    /* Keep tfoot at the end of the table only (do not duplicate TOTAL rows on every printed page) */
     tfoot {
-        display: table-footer-group !important;
+        display: table-row-group !important;
         font-weight: bold;
     }
 
