@@ -50,17 +50,34 @@ if ($report === 'history' && $role === 'cashier') {
 $delimiter = $delimParam === 'semicolon' ? ';' : ',';
 $pdo = db();
 
-$fromCompact = str_replace('-', '', $fromDate);
-$toCompact   = str_replace('-', '', $toDate);
-$filename    = "kedai-paradise_{$report}_{$fromCompact}-{$toCompact}.csv";
+function respondEmptyCsv(): never {
+    http_response_code(200);
+    header('Content-Type: text/html; charset=UTF-8');
+    echo '<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        . '<title>Ekspor CSV - Kedai Paradise</title></head>'
+        . '<body style="font-family:sans-serif;background:#F8F7F4;color:#1E293B;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:16px;">'
+        . '<div style="background:#fff;border:1px solid #E6E4DD;border-radius:16px;padding:28px;max-width:440px;text-align:center;box-shadow:0 4px 12px rgba(0,0,0,0.06);">'
+        . '<h1 style="font-size:16px;margin:0 0 10px 0;color:#9E3B1B;">Ekspor CSV</h1>'
+        . '<p style="font-size:14px;margin:0 0 18px 0;">Tidak ada data pada periode yang dipilih untuk diekspor.</p>'
+        . '<button type="button" onclick="history.back()" style="background:#1B4D3E;color:#fff;border:none;border-radius:10px;padding:10px 18px;font-weight:bold;cursor:pointer;">&larr; Kembali</button>'
+        . '</div></body></html>';
+    exit;
+}
 
-header('Content-Type: text/csv; charset=UTF-8');
-header('Content-Disposition: attachment; filename="' . $filename . '"');
-header('Cache-Control: no-store');
-header('X-Content-Type-Options: nosniff');
+function openCsvStream(string $report, string $fromDate, string $toDate) {
+    $fromCompact = str_replace('-', '', $fromDate);
+    $toCompact   = str_replace('-', '', $toDate);
+    $filename    = "kedai-paradise_{$report}_{$fromCompact}-{$toCompact}.csv";
 
-$out = fopen('php://output', 'w');
-fwrite($out, "\xEF\xBB\xBF");
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Cache-Control: no-store');
+    header('X-Content-Type-Options: nosniff');
+
+    $out = fopen('php://output', 'w');
+    fwrite($out, "\xEF\xBB\xBF");
+    return $out;
+}
 
 function sanitizeCsvCell($val) {
     if (is_int($val) || is_float($val)) {
@@ -76,7 +93,7 @@ function sanitizeCsvCell($val) {
 
 function writeCsvRow($out, array $row, string $delim): void {
     $sanitized = array_map('sanitizeCsvCell', $row);
-    fputcsv($out, $sanitized, $delim, '"', '');
+    fputcsv($out, $sanitized, $delim, '"', '', "\r\n");
 }
 
 if ($report === 'summary') {
@@ -85,6 +102,17 @@ if ($report === 'summary') {
     $poolData   = getPoolBreakdown($pdo, $fromDate, $toDate, $kpi);
     $methodData = getPaymentMethodBreakdown($pdo, $fromDate, $toDate);
     $dailyRows  = getDailyBreakdown($pdo, $fromDate, $toDate, $sort ?: 'order_date', $dir);
+
+    if (
+        (int)$kpi['total_orders'] === 0 &&
+        (int)$voidInfo['void_count'] === 0 &&
+        (int)$poolData['total_manual_income'] === 0 &&
+        (int)$poolData['total_expenses'] === 0
+    ) {
+        respondEmptyCsv();
+    }
+
+    $out = openCsvStream($report, $fromDate, $toDate);
 
     writeCsvRow($out, ['SUMMARY'], $delimiter);
     writeCsvRow($out, ['total_orders', 'gross_revenue', 'total_cost', 'gross_profit', 'net_profit', 'manual_income', 'expenses', 'net_cash_balance', 'avg_duration_seconds', 'voided_orders', 'voided_value'], $delimiter);
@@ -131,8 +159,17 @@ if ($report === 'summary') {
         ], $delimiter);
     }
 
+    fclose($out);
+    exit;
+
 } elseif ($report === 'menu_performance') {
     $rows = getMenuPerformanceReport($pdo, $fromDate, $toDate, $sort ?: 'gross_sales', $dir);
+    $totalSold = array_sum(array_map(static fn($r) => (int)$r['total_qty'], $rows));
+    if (empty($rows) || $totalSold === 0) {
+        respondEmptyCsv();
+    }
+
+    $out = openCsvStream($report, $fromDate, $toDate);
     writeCsvRow($out, ['menu_name', 'quantity_sold', 'base_sales', 'modifier_sales', 'gross_sales', 'total_cost', 'gross_profit'], $delimiter);
     foreach ($rows as $r) {
         writeCsvRow($out, [
@@ -146,12 +183,20 @@ if ($report === 'summary') {
         ], $delimiter);
     }
 
+    fclose($out);
+    exit;
+
 } elseif ($report === 'finance') {
     $filterType = $_GET['type'] ?? '';
     $filterPool = $_GET['pool'] ?? '';
     $filterCat  = trim($_GET['category'] ?? '');
     $rows = getFinanceReport($pdo, $fromDate, $toDate, $filterType, $filterPool, $filterCat, $sort ?: 'date', $dir);
 
+    if (empty($rows)) {
+        respondEmptyCsv();
+    }
+
+    $out = openCsvStream($report, $fromDate, $toDate);
     writeCsvRow($out, ['finance_id', 'date', 'type', 'category', 'pool', 'amount', 'description', 'recorded_by'], $delimiter);
     foreach ($rows as $r) {
         writeCsvRow($out, [
@@ -165,6 +210,9 @@ if ($report === 'summary') {
             $r['recorder_name'],
         ], $delimiter);
     }
+
+    fclose($out);
+    exit;
 
 } elseif ($report === 'history') {
     $status = $_GET['status'] ?? '';
@@ -197,6 +245,15 @@ if ($report === 'summary') {
     ];
     $orderBy = $histSortMap[$sort] ?? 't.date';
     $dirSql  = $dir === 'asc' ? 'ASC' : 'DESC';
+
+    // Check for empty dataset before sending CSV download headers
+    $cntStmt = $pdo->prepare("SELECT COUNT(*) FROM transactions t WHERE {$where}");
+    $cntStmt->execute($params);
+    if ((int)$cntStmt->fetchColumn() === 0) {
+        respondEmptyCsv();
+    }
+
+    $out = openCsvStream($report, $fromDate, $toDate);
 
     if ($mode === 'summary') {
         $headers = ['order_no', 'date', 'table_no', 'method', 'total', 'paid', 'change_due', 'status', 'completed_at', 'duration_seconds', 'items', 'cashier'];
@@ -302,7 +359,7 @@ if ($report === 'summary') {
             writeCsvRow($out, $rowOut, $delimiter);
         }
     }
-}
 
-fclose($out);
-exit;
+    fclose($out);
+    exit;
+}
