@@ -34,9 +34,13 @@ $navCashier = [
 ];
 $navItems = $role === 'admin' ? $navAdmin : ($role === 'cashier' ? $navCashier : []);
 
-$printPeriod = '';
-if (!empty($_GET['from']) || !empty($_GET['to'])) {
-    $printPeriod = ($_GET['from'] ?? '-') . ' s/d ' . ($_GET['to'] ?? '-');
+// Use explicit $printPeriodLabel set by report pages when available
+if (!empty($printPeriodLabel)) {
+    $printPeriod = (string)$printPeriodLabel;
+} elseif (!empty($_GET['from']) || !empty($_GET['to'])) {
+    $fFmt = !empty($_GET['from']) ? date('d/m/Y', strtotime((string)$_GET['from'])) : '-';
+    $tFmt = !empty($_GET['to']) ? date('d/m/Y', strtotime((string)$_GET['to'])) : '-';
+    $printPeriod = $fFmt . ' s/d ' . $tFmt;
 } elseif ($currentFile === 'history.php' && $role === 'cashier') {
     $printPeriod = date('d/m/Y') . ' (Hari Ini)';
 } else {
